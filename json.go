@@ -4,7 +4,7 @@ package json
 // as per JSON spec.
 type Kind uint
 
-// sKind here.
+// Kind of Objects as per the JSON spec.
 const (
 	InvalidKind Kind = iota
 	ObjectKind
@@ -14,6 +14,8 @@ const (
 	NumberKind
 	StringKind
 	NullKind
+	// "Non-standard" Kind, See the iterator Type
+	IteratorKind
 )
 
 // Value is the json value.
@@ -37,6 +39,9 @@ type Value interface {
 
 	// Nil
 	Null()
+
+	// Iterator
+	Iterator() Iterator
 }
 
 // Object represents a JSON object.
@@ -63,4 +68,22 @@ type Number interface {
 	Float64() (float64, error)
 	Int64() (int64, error)
 	Raw() []byte
+}
+
+// Iterator is the common interface for JSON iterators.
+type Iterator interface {
+	// Next returns the next value if any or nil.
+	// More indicates whatever there is any more
+	// _possible_ values, so you must always check
+	// to make sure the item is not nil.
+	// Calling Next after the last item MUST return
+	// `nil, false`.
+	Next() (item Value, more bool)
+	// Len returns -1 for indefinite streams or an advisory
+	// number indicating the the number of values it holds.
+	// The iterator _MAY_ return more or less items than what
+	// is advised but _MUST_ always return a finite
+	// number of items when Len returns 1 or more.
+	// 0 indicates exactly 0 items.
+	Len() int
 }
