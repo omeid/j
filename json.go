@@ -1,26 +1,26 @@
 package json
 
-// A Kind describes the type of a value
+// A Type describes the type of a value
 // as per JSON spec.
-type Kind uint
+type Type uint
 
-// Kind of Objects as per the JSON spec.
+// Type of Objects as per the JSON spec.
 const (
-	InvalidKind Kind = iota
-	ObjectKind
-	MemberKind
-	ArrayKind
-	BoolKind
-	NumberKind
-	StringKind
-	NullKind
-	// "Non-standard" Kind, See the iterator Type
-	IteratorKind
+	InvalidType Type = iota
+	ObjectType
+	MemberType
+	ArrayType
+	BoolType
+	NumberType
+	StringType
+	NullType
+	// "Non-standard" Type, See the iterator Type
+	IteratorType
 )
 
 // Value is the json value.
 type Value interface {
-	Kind() Kind
+	Type() Type
 
 	// Object
 	Object() Object
