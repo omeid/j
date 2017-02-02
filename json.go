@@ -19,28 +19,27 @@ const (
 )
 
 // Value is the json value.
+// The Methods should be only called on specified type documented.
+// Null type accepts no methods.
 type Value interface {
 	Type() Type
 
-	// Object
+	// Object applies to Object type.
 	Object() Object
 
-	// Array
+	// Array applies to Array type.
 	Array() Array
 
-	// Bool
+	// Bool applies to Bool type.
 	Bool() bool
 
-	// Number
+	// Number applies to Number type.
 	Number() Number
 
-	// String
+	// String applies to string type.
 	String() string
 
-	// Nil
-	Null()
-
-	// Iterator
+	// Iterator applies to iterator type.
 	Iterator() Iterator
 }
 
