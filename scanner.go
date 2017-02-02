@@ -1,6 +1,9 @@
 package json
 
-import "strconv"
+import (
+	"log"
+	"strconv"
+)
 
 // Valid check if the provide data is correct json document.
 func Valid(src []byte) error {
@@ -8,12 +11,18 @@ func Valid(src []byte) error {
 
 	scan.reset()
 	for _, c := range src {
-		if scan.step(c) == stateError {
+		scan.step(c)
+		if scan.state == stateError {
 			return scan.err
 		}
 	}
 
-	// scan.eof() // check for the end.
+	scan.eof() // check for the end.
+
+	if scan.err != nil {
+		return scan.err
+	}
+
 	return nil
 }
 
@@ -27,36 +36,49 @@ func (se SyntaxError) Error() string {
 	return se.Position.string() + se.Message
 }
 
+//go:generate stringer -type=State
+
 // State is the current state of the scanner state machine.
 type State int
 
 // Tokens as per the JSON spec.
 const (
 	stateBeginJSON State = iota // At the beginning there was JSON.
+	stateEndJSON
 	// stateWhitespace
-	stateInObject  // we are in an object
-	stateEndObject // object properly ended
-	stateInArray   // we are in an array
+	stateBeginObject // member or end.
+	stateInObject    // we are in an object
 
-	stateInObjectKey      // we are in an object key
-	stateEndObjectKey     // object key finished, expect value.
-	stateBeginObjectValue //process object value
-	stateEndObjectValue   // object valued finished, expect key or end of object.
+	stateBeginMember // seen "," in stateInObject
+	stateInMember
+	stateInMemberKey
+	stateEndMemberKey  // expect :
+	stateInMemberValue // after :, expect a value type.
+
+	stateBeginArray // value or end.
+	stateInArray    // we are in an array
+
+	// stateEndObjectValue   // object valued finished, expect key or end of object.
 
 	stateBeginValue // find a value type.
 
 	stateError // Something is wrong, check s.err
 )
 
-// parseTarget is the type of object being parsed.
-// type parseTarget int
+var steps = map[State]func(*scanner, byte){
+	stateBeginJSON: stepBeginJSON,
+	stateEndJSON:   stepEndJSON,
 
-// Type of objects we are parsing, kept in the scanner stack.
-// const (
-// 	memberKey parseTarget = iota
-// 	memberValue
-// 	arrayvalue
-// )
+	stateBeginObject:   stepBeginObject,
+	stateInObject:      stepInObject,
+	stateBeginMember:   stepBeginMember,
+	stateInMemberKey:   stepInMemberKey,
+	stateEndMemberKey:  stepEndMemberKey,
+	stateInMemberValue: stepInMemberValue,
+
+	stateBeginArray: stepBeginArray,
+	stateInArray:    stepInArray,
+}
 
 type scanner struct {
 	state State
@@ -67,7 +89,39 @@ type scanner struct {
 	// the stack of state
 }
 
-func (s scanner) reset() {
+func (s *scanner) pushState() {
+	s.stack = append(s.stack, s.state)
+}
+
+func (s *scanner) popState() {
+	l := len(s.stack)
+
+	if l == 0 {
+		s.state = stateEndJSON
+	} else {
+		s.state, s.stack = s.stack[l-1], s.stack[:l-1]
+	}
+
+}
+
+func (s *scanner) eof() {
+	if s.err != nil {
+		return
+	}
+
+	s.step(' ') // we should be okay with whitespace at this point.
+
+	if s.state != stateEndJSON {
+		s.err = &SyntaxError{
+			Message:  "Unexpected end of json", // + stateEndJSON.String(),
+			Position: s.pos,
+		}
+	}
+
+}
+
+func (s *scanner) reset() {
+	///TODO: REMOVE POST DEBUG
 	s.pos.reset()
 	s.err = nil
 	// since a whitespace is valid at the start we use
@@ -77,127 +131,185 @@ func (s scanner) reset() {
 }
 
 // error records an error and switches to the error state.
-func (s *scanner) error(c byte, context string) State {
+func (s *scanner) error(c byte, context string) {
 	s.state = stateError
 	s.err = &SyntaxError{
 		Message:  "invalid character " + quoteChar(c) + " " + context,
 		Position: s.pos,
 	}
-	return s.state
 }
 
-func (s *scanner) step(c byte) State {
+func (s *scanner) step(c byte) {
 
+	// if there is an error, do not step.
 	if s.err != nil {
-		return stateError
+		return
 	}
 
 	defer func() {
+		//TODO: REMOVE POST DEBUG.
 		s.last = c
 	}()
 
 	s.pos.advance(c)
+	// steps[s.state](s, c)
 
-	switch s.state {
-
-	case stateBeginJSON:
-		return stepBeginJSON(s, c)
-	case stateInObject:
-		return stepInObject(s, c)
-	case stateInObjectKey:
-		return stepInObjectKey(s, c)
-	case stateEndObjectKey:
-		return stepBeginObjectValue(s, c)
-	case stateBeginValue:
-		return stepBeginValue(s, c)
-		// case stateInArray:
-		// return stepInArray(s, c)
+	step, ok := steps[s.state]
+	if !ok {
+		log.Fatalf("Missing handler for state %s", s.state)
 	}
-	// stateEndObject
-
-	return s.state
+	step(s, c)
 }
 
-func stepBeginJSON(s *scanner, c byte) State {
+func stepBeginJSON(s *scanner, c byte) {
+	// ignore whitespaces
 	if c <= ' ' && isSpace(c) {
-		return s.state // nothing changes
+		return // nothing changes.
 	}
 
-	if c == '{' {
+	switch c {
+
+	case '{':
+		s.state = stateBeginObject
+	case '[':
+		s.state = stateBeginArray
+	default:
+		s.error(c, "expected beginning of json ('{' or '[')")
+	}
+}
+
+func stepEndJSON(s *scanner, c byte) {
+	// ignore white space nothing changes
+	if c <= ' ' && isSpace(c) {
+		return
+	}
+
+	s.error(0, "unexpected end of json")
+}
+
+func stepBeginObject(s *scanner, c byte) {
+	// ignore white space nothing changes
+	if c <= ' ' && isSpace(c) {
+		return
+	}
+
+	switch c {
+	case '}':
+		s.popState() //
+	case '"':
 		s.state = stateInObject
-		// s.pushParseState(parseObjectKey)
-		return s.state
+		s.pushState()
+		s.state = stateInMemberKey
+	default:
+		s.error(c, "expected a pair or end of object")
 	}
 
-	if c == '[' {
-		s.state = stateInArray
-		// s.pushParseState(parseArrayValue)
-		return s.state
+}
+func stepInObject(s *scanner, c byte) {
+	// ignore white space nothing changes
+	if c <= ' ' && isSpace(c) {
+		return
 	}
 
-	return s.error(c, "expected beginning of json ('{' or '[')")
+	switch c {
+
+	case '}':
+		s.popState()
+	case ',':
+		s.pushState()
+		s.state = stateBeginMember
+	default:
+		s.error(c, "expected a pair or end of object")
+	}
+
 }
 
-func stepInObject(s *scanner, c byte) State {
+func stepBeginMember(s *scanner, c byte) {
+	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
-		return s.state // nothing changes
-	}
-
-	if c == '}' {
-		s.state = stateEndObject
-		// s.pushParseState(parseObjectKey)
-		return s.state
+		return
 	}
 
 	if c == '"' {
-		s.state = stateInObjectKey
-		// s.pushParseState(parseArrayValue)
-		return s.state
+		s.state = stateInMemberKey
+	} else {
+		s.error(c, "expected string.")
 	}
-
-	return s.error(c, "expected a pair or end of object")
 }
 
-func stepInObjectKey(s *scanner, c byte) State {
+func stepInMemberKey(s *scanner, c byte) {
 	if c == '"' && s.last != '\\' {
-		s.state = stateEndObjectKey
+		s.state = stateEndMemberKey // find colon ':'
 	}
-	return s.state
 }
 
-func stepBeginObjectValue(s *scanner, c byte) State {
-
+func stepEndMemberKey(s *scanner, c byte) {
+	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
-		return s.state // nothing changes
+		return
 	}
 
 	if c != ':' {
-		return s.error(c, "expected a colon")
+		s.error(c, "expected a colon")
+	} else {
+		s.state = stateInMemberValue
 	}
-
-	s.state = stateBeginValue
-
-	return s.state
 }
 
-func stepBeginValue(s *scanner, c byte) State {
+func stepInMemberValue(s *scanner, c byte) {
+	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
-		return s.state // nothing changes
+		return
 	}
 
-	if c == '{' {
-		s.state = stateInObject
-		// s.pushParseState(parseObjectKey)
-		return s.state
+	s.state = stateInMember
+	stepBeginValue(s, c)
+}
+
+func stepBeginArray(s *scanner, c byte) {
+	// ignore white space nothing changes
+	if c <= ' ' && isSpace(c) {
+		return
 	}
 
-	if c == '[' {
-		s.state = stateInArray
-		// s.pushParseState(parseArrayValue)
-		return s.state
+	// end or value
+	if c == ']' {
+		s.popState()
+		return
 	}
 
-	return s.error(c, "expected a value type")
+	stepBeginValue(s, c)
+}
+
+func stepInArray(s *scanner, c byte) {
+	// ignore white space nothing changes
+	if c <= ' ' && isSpace(c) {
+		return
+	}
+
+	if c == ']' {
+		s.popState() // the end.
+	} else {
+		s.state = stateBeginValue
+	}
+}
+
+func stepBeginValue(s *scanner, c byte) {
+	// ignore white space nothing changes
+	if c <= ' ' && isSpace(c) {
+		return
+	}
+
+	switch c {
+	case '{':
+		s.state = stateBeginObject
+
+	case '[':
+		s.state = stateBeginArray
+
+	default:
+		s.error(c, "expected a value type")
+	}
 }
 
 func isSpace(c byte) bool {
