@@ -1,9 +1,6 @@
 package json
 
-import (
-	"log"
-	"strconv"
-)
+import "strconv"
 
 // Valid check if the provide data is correct json document.
 func Valid(src []byte) error {
@@ -50,17 +47,22 @@ const (
 	stateInObject    // we are in an object
 
 	stateBeginMember // seen "," in stateInObject
-	stateInMember
+	stateInMember    // end of object or , + value
 	stateInMemberKey
 	stateEndMemberKey  // expect :
 	stateInMemberValue // after :, expect a value type.
 
 	stateBeginArray // value or end.
-	stateInArray    // we are in an array
+	stateInArray    // after value in array, expect Seperator Followed by Value or ].
+	stateArrayValue // after , in a value, expect value type.
 
 	// stateEndObjectValue   // object valued finished, expect key or end of object.
 
 	stateBeginValue // find a value type.
+	stateInString   // string value.
+	stateInFalse    // false
+	stateInTrue     // true
+	stateInNull     // null
 
 	stateError // Something is wrong, check s.err
 )
@@ -75,9 +77,16 @@ var steps = map[State]func(*scanner, byte){
 	stateInMemberKey:   stepInMemberKey,
 	stateEndMemberKey:  stepEndMemberKey,
 	stateInMemberValue: stepInMemberValue,
+	stateInMember:      stepInMember,
 
 	stateBeginArray: stepBeginArray,
 	stateInArray:    stepInArray,
+	stateArrayValue: stepArrayValue,
+
+	stateInString: stepInString,
+	stateInFalse:  stepInFalse,
+	stateInTrue:   stepInTrue,
+	stateInNull:   stepInNull,
 }
 
 type scanner struct {
@@ -110,6 +119,10 @@ func (s *scanner) eof() {
 	}
 
 	s.step(' ') // we should be okay with whitespace at this point.
+
+	if s.err != nil {
+		return
+	}
 
 	if s.state != stateEndJSON {
 		s.err = &SyntaxError{
@@ -148,6 +161,7 @@ func (s *scanner) step(c byte) {
 
 	defer func() {
 		//TODO: REMOVE POST DEBUG.
+		// fmt.Printf("%v %c -> %s\n", s.stack, c, s.state)
 		s.last = c
 	}()
 
@@ -156,7 +170,8 @@ func (s *scanner) step(c byte) {
 
 	step, ok := steps[s.state]
 	if !ok {
-		log.Fatalf("Missing handler for state %s", s.state)
+		// fmt.Printf("Missing handler for state %s", s.state)
+		panic("Whoops")
 	}
 	step(s, c)
 }
@@ -266,6 +281,23 @@ func stepInMemberValue(s *scanner, c byte) {
 	stepBeginValue(s, c)
 }
 
+func stepInMember(s *scanner, c byte) {
+	// ignore white space nothing changes
+	if c <= ' ' && isSpace(c) {
+		return
+	}
+
+	switch c {
+
+	case '}':
+		s.popState() // end of object.
+	case ',':
+		s.state = stateBeginMember
+	default:
+		s.error(c, "expected } or a value seperator")
+	}
+}
+
 func stepBeginArray(s *scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
@@ -278,6 +310,8 @@ func stepBeginArray(s *scanner, c byte) {
 		return
 	}
 
+	s.state = stateInArray
+	s.pushState()
 	stepBeginValue(s, c)
 }
 
@@ -287,11 +321,26 @@ func stepInArray(s *scanner, c byte) {
 		return
 	}
 
-	if c == ']' {
-		s.popState() // the end.
-	} else {
-		s.state = stateBeginValue
+	switch c {
+
+	case ']':
+		s.popState() // array end.
+	case ',':
+		s.pushState()
+		s.state = stateArrayValue
+	default:
+		s.error(c, "expected ] or a value seperator")
 	}
+}
+
+func stepArrayValue(s *scanner, c byte) {
+	// ignore white space nothing changes
+	if c <= ' ' && isSpace(c) {
+		return
+	}
+
+	s.state = stateInArray
+	stepBeginValue(s, c)
 }
 
 func stepBeginValue(s *scanner, c byte) {
@@ -303,12 +352,58 @@ func stepBeginValue(s *scanner, c byte) {
 	switch c {
 	case '{':
 		s.state = stateBeginObject
-
 	case '[':
 		s.state = stateBeginArray
-
+	case '"':
+		s.state = stateInString
+	case 'f':
+		s.state = stateInFalse
+	case 't':
+		s.state = stateInTrue
+	case 'n':
+		s.state = stateInNull
 	default:
 		s.error(c, "expected a value type")
+	}
+}
+
+func stepInString(s *scanner, c byte) {
+	if c == '"' && s.last != '\\' {
+		s.popState() // end of string.
+	}
+}
+
+func stepInFalse(s *scanner, c byte) {
+
+	if (s.last == 'f' && c != 'a') ||
+		(s.last == 'a' && c != 'l') ||
+		(s.last == 'l' && c != 's') ||
+		(s.last == 's' && c != 'e') {
+		s.error(c, "Unexpected value")
+	} else if s.last == 's' && c == 'e' {
+		s.popState() //falsey?
+	}
+}
+
+func stepInTrue(s *scanner, c byte) {
+
+	if (s.last == 't' && c != 'r') ||
+		(s.last == 'r' && c != 'u') ||
+		(s.last == 'u' && c != 'e') {
+		s.error(c, "Unexpected value")
+	} else if s.last == 'u' && c == 'e' {
+		s.popState() //trues?
+	}
+}
+
+func stepInNull(s *scanner, c byte) {
+
+	if (s.last == 'n' && c != 'u') ||
+		(s.last == 'u' && c != 'l') ||
+		(s.last == 'l' && c != 'l') {
+		s.error(c, "Unexpected value")
+	} else if s.last == 'l' && c == 'l' {
+		s.popState() //nullols?
 	}
 }
 

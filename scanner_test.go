@@ -70,6 +70,22 @@ var examples = []simpleExamples{
 		in:  []byte(`{"nexted":{"multi": {}, "key": []}}`),
 		err: nil,
 	},
+	{
+		in:  []byte(`["simple"]`),
+		err: nil,
+	},
+	{
+		in:  []byte(`["multi", "value"]`),
+		err: nil,
+	},
+	{
+		in:  []byte(`{"simple": true, "wrong": false, "value" : null }`),
+		err: nil,
+	},
+	{
+		in:  []byte(`{"a": true, "b": [true] }`),
+		err: nil,
+	},
 }
 
 func TestValid(t *testing.T) {
@@ -84,10 +100,14 @@ func TestValid(t *testing.T) {
 func BenchmarkValid(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
-	for _, tt := range examples {
-		err := Valid(tt.in)
-		if !reflect.DeepEqual(tt.err, err) {
-			b.Fatalf("For %s\nExpected: %#v\nGot:      %#v", tt.in, tt.err, err)
+
+	for i := 0; i < b.N; i++ {
+		for _, tt := range examples {
+			err := Valid(tt.in)
+			//if !reflect.DeepEqual(tt.err, err) {
+			//	b.Fatalf("For %s\nExpected: %#v\nGot:      %#v", tt.in, tt.err, err)
+			//}
+			_ = err
 		}
 	}
 }
