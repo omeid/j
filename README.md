@@ -8,6 +8,9 @@ The project's aim is to provide a set of small api-compatible libraries that pro
 
 ### Credits
 
+- The scanner design is heavily influenced by Rob Pike's [Lexical Scanning in Go](https://talks.golang.org/2011/lex.slide) talk and borrows some implementation details from the Go's standard library text and json scanner implementations.
+
+
 
 ### License 
 MIT, see [LICENSE.md](./LICENSE.md).
