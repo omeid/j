@@ -90,10 +90,23 @@ var examples = []simpleExamples{
 		in:  []byte(`{"escaped": "\"\\\/\b\f\n\r\t", "bad": "\x" }`),
 		err: makeSyntaxError(42, 1, 42, "invalid character 'x' Expected a qoutation mark, reverse solidus, or a control character"),
 	},
+	{
+		in:  []byte(`{"escaped": "\\\n\r\u000000NotHex\uFFFFFF\uffffff", "bad": "\uL" }`),
+		err: makeSyntaxError(63, 1, 63, "invalid character 'L' Expected a Hexadecimal digit."),
+	},
+	{
+		in:  []byte(`{"\\\/\b\f\uF00F00key":{"nested\n\t": {}}}`),
+		err: nil,
+	},
+	{
+		in:  []byte(`{"\\\/\b\f\uF00F00key":{"nested\n\t": ["BadEscape: \uX"]}}`),
+		err: makeSyntaxError(54, 1, 54, "invalid character 'X' Expected a Hexadecimal digit."),
+	},
 }
 
 func TestValid(t *testing.T) {
 	for _, tt := range examples {
+		// fmt.Printf("\n\n%s\n\n", tt.in)
 		err := Valid(tt.in)
 		if !reflect.DeepEqual(tt.err, err) {
 			t.Errorf("For %s\nExpected: %#v\nGot:      %#v", tt.in, tt.err, err)

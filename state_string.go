@@ -4,9 +4,9 @@ package json
 
 import "fmt"
 
-const _State_name = "stateBeginJSONstateEndJSONstateBeginObjectstateInObjectstateBeginMemberstateInMemberstateInMemberKeystateEndMemberKeystateInMemberValuestateBeginArraystateInArraystateArrayValuestateBeginValuestateInStringstateInStringEscapestateInFalsestateInTruestateInNullstateError"
+const _State_name = "stateBeginJSONstateEndJSONstateBeginObjectstateInObjectstateBeginMemberstateInMemberstateBeginMemberKeystateEndMemberKeystateInMemberValuestateBeginArraystateInArraystateArrayValuestateBeginValuestateInStringstateInStringEscapestateInStringEscapeUstateInStringEscapeUxstateInStringEscapeUxxstateInStringEscapeUxxxstateInStringEscapeUxxxxstateInFalsestateInTruestateInNullstateError"
 
-var _State_index = [...]uint16{0, 14, 26, 42, 55, 71, 84, 100, 117, 135, 150, 162, 177, 192, 205, 224, 236, 247, 258, 268}
+var _State_index = [...]uint16{0, 14, 26, 42, 55, 71, 84, 103, 120, 138, 153, 165, 180, 195, 208, 227, 247, 268, 290, 313, 337, 349, 360, 371, 381}
 
 func (i State) String() string {
 	if i < 0 || i >= State(len(_State_index)-1) {
