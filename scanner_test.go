@@ -86,6 +86,10 @@ var examples = []simpleExamples{
 		in:  []byte(`{"a": true, "b": [true] }`),
 		err: nil,
 	},
+	{
+		in:  []byte(`{"escaped": "\"\\\/\b\f\n\r\t", "bad": "\x" }`),
+		err: makeSyntaxError(42, 1, 42, "invalid character 'x' Expected a qoutation mark, reverse solidus, or a control character"),
+	},
 }
 
 func TestValid(t *testing.T) {

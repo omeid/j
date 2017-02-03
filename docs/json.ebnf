@@ -61,7 +61,7 @@ String = QuotationMark { Char } QuotationMark .
 
 Char = Unescaped | Escaped .
 
-Escaped = Escape ("qoute"  |  `\` |  "|"  |  "b"  |  "f"  |  "n"  |  "r"  |  "t"  | HexLiteral ) .
+Escaped = Escape (`"`  |  `\` |  "/"  |  "b"  |  "f"  |  "n"  |  "r"  |  "t"  | HexLiteral ) .
 
 HexLiteral    = "u" HexDigit HexDigit HexDigit HexDigit . //  uXXXX 
 HexDigit      =   "0" … "9" | "A" … "F" | "a" … "f" .

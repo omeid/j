@@ -59,10 +59,13 @@ const (
 	// stateEndObjectValue   // object valued finished, expect key or end of object.
 
 	stateBeginValue // find a value type.
-	stateInString   // string value.
-	stateInFalse    // false
-	stateInTrue     // true
-	stateInNull     // null
+
+	stateInString // string value.
+	stateInStringEscape
+
+	stateInFalse // false
+	stateInTrue  // true
+	stateInNull  // null
 
 	stateError // Something is wrong, check s.err
 )
@@ -83,10 +86,11 @@ var steps = map[State]func(*scanner, byte){
 	stateInArray:    stepInArray,
 	stateArrayValue: stepArrayValue,
 
-	stateInString: stepInString,
-	stateInFalse:  stepInFalse,
-	stateInTrue:   stepInTrue,
-	stateInNull:   stepInNull,
+	stateInString:       stepInString,
+	stateInStringEscape: stepInStringEscape,
+	stateInFalse:        stepInFalse,
+	stateInTrue:         stepInTrue,
+	stateInNull:         stepInNull,
 }
 
 type scanner struct {
@@ -161,7 +165,7 @@ func (s *scanner) step(c byte) {
 
 	defer func() {
 		//TODO: REMOVE POST DEBUG.
-		// fmt.Printf("%v %c -> %s\n", s.stack, c, s.state)
+		// fmt.Printf("%c -> %v %s\n", c, s.stack, s.state)
 		s.last = c
 	}()
 
@@ -368,9 +372,35 @@ func stepBeginValue(s *scanner, c byte) {
 }
 
 func stepInString(s *scanner, c byte) {
-	if c == '"' && s.last != '\\' {
+
+	switch c {
+	case '\\':
+		s.pushState()
+		s.state = stateInStringEscape
+	case '"':
 		s.popState() // end of string.
 	}
+}
+
+// basic escaping, \uXXXX case is it's own state.
+func stepInStringEscape(s *scanner, c byte) {
+
+	if s.last != '\\' {
+		// we shouldn't be here!
+		s.error(c, "parser-error: in escape-state without Escape.")
+		return
+	}
+
+	switch c {
+	case '"', '\\', '/', 'b', 'f', 'n', 'r', 't':
+		s.popState() // end of escape.
+	case 'u':
+		s.pushState()
+		// s.state = // HexLiteral.
+	default:
+		s.error(c, "Expected a qoutation mark, reverse solidus, or a control character")
+	}
+
 }
 
 func stepInFalse(s *scanner, c byte) {
