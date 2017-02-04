@@ -416,6 +416,11 @@ func stepBeginValue(s *Scanner, c byte) {
 
 func stepInString(s *Scanner, c byte) {
 
+	if c < 0x20 {
+		s.error(c, "in string literal")
+		return
+	}
+
 	switch c {
 	case '\\':
 		s.pushState()
