@@ -75,7 +75,7 @@ var examples = []simpleExamples{
 		err: nil,
 	},
 	{
-		in:  []byte(`["multi", "value"]`),
+		in:  []byte(`["multi"  , "value"]`),
 		err: nil,
 	},
 	{
@@ -102,6 +102,24 @@ var examples = []simpleExamples{
 		in:  []byte(`{"\\\/\b\f\uF00F00key":{"nested\n\t": ["BadEscape: \uX"]}}`),
 		err: makeSyntaxError(54, 1, 54, "invalid character 'X' Expected a Hexadecimal digit."),
 	},
+
+	{
+		in: []byte(`[
+0,
+-3,
+-234324,
+5,
+324132432,
+-7,
+-0.8,
+-1.9,
+0.10,
+1.11,
+-0.9e-12,
+-0.10E+13
+]`),
+		err: nil,
+	},
 }
 
 func TestValid(t *testing.T) {
@@ -109,7 +127,8 @@ func TestValid(t *testing.T) {
 		// fmt.Printf("\n\n%s\n\n", tt.in)
 		err := Valid(tt.in)
 		if !reflect.DeepEqual(tt.err, err) {
-			t.Errorf("For %s\nExpected: %#v\nGot:      %#v", tt.in, tt.err, err)
+			t.Errorf("For:\n%s\nExpected: %#v\nGot:      %#v", tt.in, tt.err, err)
+			break
 		}
 	}
 }

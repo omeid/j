@@ -1,9 +1,6 @@
 package json
 
-import (
-	"fmt"
-	"strconv"
-)
+import "strconv"
 
 // Valid check if the provide data is correct json document.
 func Valid(src []byte) error {
@@ -73,6 +70,13 @@ const (
 	stateInStringEscapeUxxx
 	stateInStringEscapeUxxxx
 
+	stateBeginNumber     // we have seen - or a digit.
+	stateInNumber        // just digits, nothing special.
+	stateBeginNumberFrac // we have seen a . after 0 or a digit
+	stateInNumberFrac    // we have seen a digit (0-9) after . eE now allowed.
+	stateBeginNumberExp  // we have seen e or E
+	stateInNumberExp     // we are past (e|E)(+|-|1-9).
+
 	stateInFalse // false
 	stateInTrue  // true
 	stateInNull  // null
@@ -107,6 +111,13 @@ var steps = map[State]func(*scanner, byte){
 	stateInFalse: stepInFalse,
 	stateInTrue:  stepInTrue,
 	stateInNull:  stepInNull,
+
+	stateBeginNumber:     stepBeginNumber,
+	stateInNumber:        stepInNumber,
+	stateBeginNumberFrac: stepBeginNumberFrac,
+	stateInNumberFrac:    stepInNumberFrac,
+	stateBeginNumberExp:  stepBeginNumberExp,
+	stateInNumberExp:     stepInNumberExp,
 }
 
 type scanner struct {
@@ -115,6 +126,8 @@ type scanner struct {
 	last  byte //The last token we had.
 	err   *SyntaxError
 	stack []State
+
+	yield bool
 	// the stack of state
 }
 
@@ -157,6 +170,8 @@ func (s *scanner) reset() {
 	///TODO: REMOVE POST DEBUG
 	s.pos.reset()
 	s.err = nil
+	// is used to pop the stack and "yield".
+	s.yield = false
 	// since a whitespace is valid at the start we use
 	// a space instead of 0
 	s.last = ' '
@@ -179,15 +194,15 @@ func (s *scanner) step(c byte) {
 	}
 
 	s.pos.advance(c)
-	// steps[s.state](s, c)
 
-	step, ok := steps[s.state]
-	if !ok {
-		s.error(c, fmt.Sprintf("parser-error: Missing handler for state %s", s.state))
-	} else {
+	step := steps[s.state]
+	step(s, c)
+	for s.yield {
+		s.yield = false
+		step = steps[s.state]
 		step(s, c)
-		s.last = c
 	}
+	s.last = c
 }
 
 func stepBeginJSON(s *scanner, c byte) {
@@ -332,7 +347,11 @@ func stepBeginArray(s *scanner, c byte) {
 }
 
 func stepInArray(s *scanner, c byte) {
-	// ignore white space nothing changes
+
+	// if s.last == ',' || s.last == ']' {
+	// 	c = s.last
+	// }
+
 	if c <= ' ' && isSpace(c) {
 		return
 	}
@@ -365,6 +384,11 @@ func stepBeginValue(s *scanner, c byte) {
 		return
 	}
 
+	if '1' <= c && c <= '9' {
+		s.state = stateBeginNumber
+		return
+	}
+
 	switch c {
 	case '{':
 		s.state = stateBeginObject
@@ -378,6 +402,10 @@ func stepBeginValue(s *scanner, c byte) {
 		s.state = stateInTrue
 	case 'n':
 		s.state = stateInNull
+	case '-':
+		s.state = stateBeginNumber
+	case '0':
+		s.state = stateBeginNumber
 	default:
 		s.error(c, "expected a value type")
 	}
@@ -487,6 +515,116 @@ func stepInNull(s *scanner, c byte) {
 	} else if s.last == 'l' && c == 'l' {
 		s.popState() //nullols?
 	}
+}
+
+func stepBeginNumber(s *scanner, c byte) {
+
+	if s.last == '0' {
+		// after 0
+		if '0' <= c && c <= '9' {
+			s.error(c, "expected  e|E, decimal point after 0, or exactly 0")
+			return
+		}
+
+		switch c {
+		case 'e', 'E':
+			s.state = stateBeginNumberExp
+		case '.':
+			s.state = stateBeginNumberFrac
+		default:
+			// possibly the value '0', yeild.
+			s.popState()
+			s.yield = true
+		}
+	} else if s.last == '-' {
+		if '0' <= c && c <= '9' {
+			s.state = stateInNumber
+		} else {
+			s.error(c, "expected digit")
+		}
+	} else if '1' <= s.last && s.last <= '9' {
+		// after 1-9
+		s.state = stateInNumber
+		s.yield = true //We are in number.
+	} else {
+		// why are we here?
+		s.error(c, "scanner-error: In Begin Number state not after 0 or -")
+	}
+
+}
+
+func stepInNumber(s *scanner, c byte) {
+
+	if '0' <= c && c <= '9' {
+		return
+	}
+
+	switch c {
+	case 'e', 'E':
+		s.state = stateBeginNumberExp
+	case '.':
+		s.state = stateBeginNumberFrac
+	default:
+		s.popState() // Not digit, not eE, not ., must be end of number? yeild.
+		s.yield = true
+	}
+}
+
+func stepBeginNumberFrac(s *scanner, c byte) {
+	// we have seen a '.' in a number
+	if '0' <= c && c <= '9' {
+		s.state = stateInNumberFrac
+		return
+	}
+
+	switch c {
+	case 'e', 'E':
+		s.state = stateInNumberExp
+	default:
+		s.popState() // Not digit, not eE, not must be end of number? yeild.
+		s.yield = true
+	}
+}
+
+func stepInNumberFrac(s *scanner, c byte) {
+
+	if '0' <= c && c <= '9' {
+		return
+	}
+
+	switch c {
+	case 'e', 'E':
+		s.state = stateBeginNumberExp
+	default:
+		s.popState() // Not digit, not eE, not must be end of number? yeild.
+		s.yield = true
+	}
+}
+
+func stepBeginNumberExp(s *scanner, c byte) {
+
+	if c == '-' || c == '+' || '1' <= c && c <= '9' {
+		s.state = stateInNumberExp
+		return
+	}
+
+	s.error(c, "Expected Minus, Plus or non zero digit.")
+}
+
+func stepInNumberExp(s *scanner, c byte) {
+
+	if '0' <= c && c <= '9' {
+		return
+	}
+
+	// We know these values are never valid.
+	if c == 'e' || c == 'E' || c == '.' {
+		s.error(c, "Expected digit")
+		return
+	}
+
+	s.popState() // Not digit, must be end of number? yeild.
+	s.yield = true
 }
 
 func isHexDig(c byte) bool {
