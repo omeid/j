@@ -7,7 +7,10 @@ J is a JSON library for Go (golang) with a focus on consistency and extensibilit
 
 The project's aim is to provide a set of small api-compatible libraries that provides a comprehensive experience for working with JSON document and streams, from syntax checking to schema validation and encoding.
 
+Please note that the project is in it's infancy stage and being rapidly developed, so some APIs may change until a point where all the required components are worked out and in a stable state. This notice will be removed once the API is considered stable.
+
 ### Why?
+
 
 
 ### Credits
