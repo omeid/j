@@ -14,8 +14,6 @@ const (
 	NumberType
 	StringType
 	NullType
-	// "Non-standard" Type, See the iterator Type
-	IteratorType
 )
 
 // Value is the json value.
@@ -38,9 +36,6 @@ type Value interface {
 
 	// String applies to string type.
 	String() string
-
-	// Iterator applies to iterator type.
-	Iterator() Iterator
 }
 
 // Object represents a JSON object.
