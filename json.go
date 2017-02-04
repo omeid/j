@@ -1,4 +1,4 @@
-package json
+package j
 
 // A Type describes the type of a value
 // as per JSON spec.

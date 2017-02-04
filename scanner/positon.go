@@ -1,4 +1,4 @@
-package json
+package scanner
 
 import "fmt"
 

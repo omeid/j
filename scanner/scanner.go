@@ -1,14 +1,14 @@
-package json
+package scanner
 
 import "strconv"
 
 // Valid check if the provide data is correct json document.
 func Valid(src []byte) error {
-	var scan scanner
+	var scan Scanner
 
-	scan.reset()
+	scan.Reset()
 	for _, c := range src {
-		scan.step(c)
+		scan.Step(c)
 		if scan.state == stateError {
 			return scan.err
 		}
@@ -23,7 +23,7 @@ func Valid(src []byte) error {
 	return nil
 }
 
-// SyntaxError is an error and it's position.
+// SyntaxError is JSON syntax error with a message and int's position.
 type SyntaxError struct {
 	Message  string
 	Position Position
@@ -35,10 +35,10 @@ func (se SyntaxError) Error() string {
 
 //go:generate stringer -type=State
 
-// State is the current state of the scanner state machine.
+// State is the current state of the scanners state machine.
 type State int
 
-// Tokens as per the JSON spec.
+// The list of possible status the scanner can be in.
 const (
 	stateBeginJSON State = iota // At the beginning there was JSON.
 	stateEndJSON
@@ -84,7 +84,7 @@ const (
 	stateError // Something is wrong, check s.err
 )
 
-var steps = map[State]func(*scanner, byte){
+var steps = map[State]func(*Scanner, byte){
 	stateBeginJSON: stepBeginJSON,
 	stateEndJSON:   stepEndJSON,
 
@@ -120,7 +120,8 @@ var steps = map[State]func(*scanner, byte){
 	stateInNumberExp:     stepInNumberExp,
 }
 
-type scanner struct {
+// Scanner is a JSON Scanner.
+type Scanner struct {
 	state State
 	pos   Position
 	last  byte //The last token we had.
@@ -131,11 +132,11 @@ type scanner struct {
 	// the stack of state
 }
 
-func (s *scanner) pushState() {
+func (s *Scanner) pushState() {
 	s.stack = append(s.stack, s.state)
 }
 
-func (s *scanner) popState() {
+func (s *Scanner) popState() {
 	l := len(s.stack)
 
 	if l == 0 {
@@ -146,12 +147,12 @@ func (s *scanner) popState() {
 
 }
 
-func (s *scanner) eof() {
+func (s *Scanner) eof() {
 	if s.err != nil {
 		return
 	}
 
-	s.step(' ') // we should be okay with whitespace at this point.
+	s.Step(' ') // we should be okay with whitespace at this point.
 
 	if s.err != nil {
 		return
@@ -159,18 +160,18 @@ func (s *scanner) eof() {
 
 	if s.state != stateEndJSON {
 		s.err = &SyntaxError{
-			Message:  "Unexpected end of json", // + stateEndJSON.String(),
+			//TODO: Add more context about what state we were.
+			Message:  "Unexpected end of json",
 			Position: s.pos,
 		}
 	}
 
 }
 
-func (s *scanner) reset() {
-	///TODO: REMOVE POST DEBUG
+// Reset sets the scanner to correct starting state.
+func (s *Scanner) Reset() {
 	s.pos.reset()
 	s.err = nil
-	// is used to pop the stack and "yield".
 	s.yield = false
 	// since a whitespace is valid at the start we use
 	// a space instead of 0
@@ -178,16 +179,9 @@ func (s *scanner) reset() {
 	s.state = stateBeginJSON
 }
 
-// error records an error and switches to the error state.
-func (s *scanner) error(c byte, context string) {
-	s.state = stateError
-	s.err = &SyntaxError{
-		Message:  "invalid character " + quoteChar(c) + " " + context,
-		Position: s.pos,
-	}
-}
-
-func (s *scanner) step(c byte) {
+// Step is moving the Scanner state machine one step ahead
+// using the byte provided as the next charachter.
+func (s *Scanner) Step(c byte) {
 
 	if s.err != nil {
 		return
@@ -205,7 +199,16 @@ func (s *scanner) step(c byte) {
 	s.last = c
 }
 
-func stepBeginJSON(s *scanner, c byte) {
+// error records an error and switches to the error state.
+func (s *Scanner) error(c byte, context string) {
+	s.state = stateError
+	s.err = &SyntaxError{
+		Message:  "invalid character " + quoteChar(c) + " " + context,
+		Position: s.pos,
+	}
+}
+
+func stepBeginJSON(s *Scanner, c byte) {
 	// ignore whitespaces
 	if c <= ' ' && isSpace(c) {
 		return // nothing changes.
@@ -222,7 +225,7 @@ func stepBeginJSON(s *scanner, c byte) {
 	}
 }
 
-func stepEndJSON(s *scanner, c byte) {
+func stepEndJSON(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
@@ -231,7 +234,7 @@ func stepEndJSON(s *scanner, c byte) {
 	s.error(0, "unexpected end of json")
 }
 
-func stepBeginObject(s *scanner, c byte) {
+func stepBeginObject(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
@@ -250,7 +253,7 @@ func stepBeginObject(s *scanner, c byte) {
 	}
 
 }
-func stepInObject(s *scanner, c byte) {
+func stepInObject(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
@@ -269,7 +272,7 @@ func stepInObject(s *scanner, c byte) {
 
 }
 
-func stepBeginMember(s *scanner, c byte) {
+func stepBeginMember(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
@@ -283,13 +286,13 @@ func stepBeginMember(s *scanner, c byte) {
 	}
 }
 
-func stepBeginMemberKey(s *scanner, c byte) {
+func stepBeginMemberKey(s *Scanner, c byte) {
 	s.state = stateEndMemberKey
 	s.pushState()
 	s.state = stateInString
 }
 
-func stepEndMemberKey(s *scanner, c byte) {
+func stepEndMemberKey(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
@@ -302,7 +305,7 @@ func stepEndMemberKey(s *scanner, c byte) {
 	}
 }
 
-func stepInMemberValue(s *scanner, c byte) {
+func stepInMemberValue(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
@@ -312,7 +315,7 @@ func stepInMemberValue(s *scanner, c byte) {
 	stepBeginValue(s, c)
 }
 
-func stepInMember(s *scanner, c byte) {
+func stepInMember(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
@@ -329,7 +332,7 @@ func stepInMember(s *scanner, c byte) {
 	}
 }
 
-func stepBeginArray(s *scanner, c byte) {
+func stepBeginArray(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
@@ -346,7 +349,7 @@ func stepBeginArray(s *scanner, c byte) {
 	stepBeginValue(s, c)
 }
 
-func stepInArray(s *scanner, c byte) {
+func stepInArray(s *Scanner, c byte) {
 
 	// if s.last == ',' || s.last == ']' {
 	// 	c = s.last
@@ -368,7 +371,7 @@ func stepInArray(s *scanner, c byte) {
 	}
 }
 
-func stepArrayValue(s *scanner, c byte) {
+func stepArrayValue(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
@@ -378,7 +381,7 @@ func stepArrayValue(s *scanner, c byte) {
 	stepBeginValue(s, c)
 }
 
-func stepBeginValue(s *scanner, c byte) {
+func stepBeginValue(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
@@ -411,7 +414,7 @@ func stepBeginValue(s *scanner, c byte) {
 	}
 }
 
-func stepInString(s *scanner, c byte) {
+func stepInString(s *Scanner, c byte) {
 
 	switch c {
 	case '\\':
@@ -423,7 +426,7 @@ func stepInString(s *scanner, c byte) {
 }
 
 // basic escaping, \uXXXX case is it's own state.
-func stepInStringEscape(s *scanner, c byte) {
+func stepInStringEscape(s *Scanner, c byte) {
 
 	switch c {
 	case '"', '\\', '/', 'b', 'f', 'n', 'r', 't':
@@ -438,7 +441,7 @@ func stepInStringEscape(s *scanner, c byte) {
 
 const errorExpectedHexDigit = "Expected a Hexadecimal digit."
 
-func stepInStringEscapeU(s *scanner, c byte) {
+func stepInStringEscapeU(s *Scanner, c byte) {
 	if s.last != 'u' {
 		// we shouldn't be here!
 		s.error(c, "parser-error: in escape-U state not after 'u'.")
@@ -452,7 +455,7 @@ func stepInStringEscapeU(s *scanner, c byte) {
 	}
 }
 
-func stepInStringEscapeUx(s *scanner, c byte) {
+func stepInStringEscapeUx(s *Scanner, c byte) {
 	if isHexDig(c) {
 		s.state = stateInStringEscapeUxx
 	} else {
@@ -460,7 +463,7 @@ func stepInStringEscapeUx(s *scanner, c byte) {
 	}
 }
 
-func stepInStringEscapeUxx(s *scanner, c byte) {
+func stepInStringEscapeUxx(s *Scanner, c byte) {
 	if isHexDig(c) {
 		s.state = stateInStringEscapeUxxx
 	} else {
@@ -468,7 +471,7 @@ func stepInStringEscapeUxx(s *scanner, c byte) {
 	}
 }
 
-func stepInStringEscapeUxxx(s *scanner, c byte) {
+func stepInStringEscapeUxxx(s *Scanner, c byte) {
 	if isHexDig(c) {
 		s.state = stateInStringEscapeUxxxx
 	} else {
@@ -476,14 +479,14 @@ func stepInStringEscapeUxxx(s *scanner, c byte) {
 	}
 }
 
-func stepInStringEscapeUxxxx(s *scanner, c byte) {
+func stepInStringEscapeUxxxx(s *Scanner, c byte) {
 	if isHexDig(c) {
 		s.popState()
 	} else {
 		s.error(c, errorExpectedHexDigit)
 	}
 }
-func stepInFalse(s *scanner, c byte) {
+func stepInFalse(s *Scanner, c byte) {
 
 	if (s.last == 'f' && c != 'a') ||
 		(s.last == 'a' && c != 'l') ||
@@ -495,7 +498,7 @@ func stepInFalse(s *scanner, c byte) {
 	}
 }
 
-func stepInTrue(s *scanner, c byte) {
+func stepInTrue(s *Scanner, c byte) {
 
 	if (s.last == 't' && c != 'r') ||
 		(s.last == 'r' && c != 'u') ||
@@ -506,7 +509,7 @@ func stepInTrue(s *scanner, c byte) {
 	}
 }
 
-func stepInNull(s *scanner, c byte) {
+func stepInNull(s *Scanner, c byte) {
 
 	if (s.last == 'n' && c != 'u') ||
 		(s.last == 'u' && c != 'l') ||
@@ -517,7 +520,7 @@ func stepInNull(s *scanner, c byte) {
 	}
 }
 
-func stepBeginNumber(s *scanner, c byte) {
+func stepBeginNumber(s *Scanner, c byte) {
 
 	if s.last == '0' {
 		// after 0
@@ -553,7 +556,7 @@ func stepBeginNumber(s *scanner, c byte) {
 
 }
 
-func stepInNumber(s *scanner, c byte) {
+func stepInNumber(s *Scanner, c byte) {
 
 	if '0' <= c && c <= '9' {
 		return
@@ -570,7 +573,7 @@ func stepInNumber(s *scanner, c byte) {
 	}
 }
 
-func stepBeginNumberFrac(s *scanner, c byte) {
+func stepBeginNumberFrac(s *Scanner, c byte) {
 	// we have seen a '.' in a number
 	if '0' <= c && c <= '9' {
 		s.state = stateInNumberFrac
@@ -586,7 +589,7 @@ func stepBeginNumberFrac(s *scanner, c byte) {
 	}
 }
 
-func stepInNumberFrac(s *scanner, c byte) {
+func stepInNumberFrac(s *Scanner, c byte) {
 
 	if '0' <= c && c <= '9' {
 		return
@@ -601,7 +604,7 @@ func stepInNumberFrac(s *scanner, c byte) {
 	}
 }
 
-func stepBeginNumberExp(s *scanner, c byte) {
+func stepBeginNumberExp(s *Scanner, c byte) {
 
 	if c == '-' || c == '+' || '1' <= c && c <= '9' {
 		s.state = stateInNumberExp
@@ -611,7 +614,7 @@ func stepBeginNumberExp(s *scanner, c byte) {
 	s.error(c, "Expected Minus, Plus or non zero digit.")
 }
 
-func stepInNumberExp(s *scanner, c byte) {
+func stepInNumberExp(s *Scanner, c byte) {
 
 	if '0' <= c && c <= '9' {
 		return
