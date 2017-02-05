@@ -4,6 +4,8 @@ package j
 // as per JSON spec.
 type Type uint
 
+//go:generate stringer -type=Type
+
 // Type of Objects as per the JSON spec.
 const (
 	InvalidType Type = iota
@@ -23,10 +25,10 @@ type Value interface {
 	Type() Type
 
 	// Object applies to Object type.
-	Object() Object
+	Members() []Member
 
 	// Array applies to Array type.
-	Array() Array
+	Values() []Value
 
 	// Bool applies to Bool type.
 	Bool() bool
@@ -36,16 +38,6 @@ type Value interface {
 
 	// String applies to string type.
 	String() string
-}
-
-// Object represents a JSON object.
-type Object interface {
-	Members() []Member
-}
-
-// Array represents a JSON array.
-type Array interface {
-	Values() []Value
 }
 
 // Member is a JSON object Member.
