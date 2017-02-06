@@ -1,4 +1,4 @@
-package scanner
+package decoder
 
 import (
 	"reflect"

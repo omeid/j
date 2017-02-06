@@ -1,4 +1,4 @@
-package scanner
+package decoder
 
 import "strconv"
 
@@ -83,7 +83,8 @@ const (
 
 	StateInFalse // false
 	StateInTrue  // true
-	StateInNull  // null
+	StateEndBool
+	StateInNull // null
 
 	StateError // Something is wrong, check s.err
 )
@@ -91,6 +92,8 @@ const (
 var steps = map[State]func(*Scanner, byte){
 	StateBeginJSON: stepBeginJSON,
 	StateEndJSON:   stepEndJSON,
+
+	StateBeginValue: stepBeginValue,
 
 	StateBeginObject:    stepBeginObject,
 	StateInObject:       stepInObject,
@@ -113,6 +116,7 @@ var steps = map[State]func(*Scanner, byte){
 	StateInStringEscapeUxxxx: stepInStringEscapeUxxxx,
 
 	StateInFalse: stepInFalse,
+	StateEndBool: stepEnd,
 	StateInTrue:  stepInTrue,
 	StateInNull:  stepInNull,
 
@@ -181,6 +185,13 @@ func (s *Scanner) Reset() {
 	// a space instead of 0
 	s.last = ' '
 	s.State = StateBeginJSON
+}
+
+func (s *Scanner) Error() error {
+	if s.err != nil {
+		return s.err
+	}
+	return nil
 }
 
 // Step is moving the Scanner state machine one step ahead
@@ -503,7 +514,7 @@ func stepInFalse(s *Scanner, c byte) {
 		(s.last == 's' && c != 'e') {
 		s.error(c, "Unexpected value")
 	} else if s.last == 's' && c == 'e' {
-		s.popState() //falsey?
+		s.State = StateEndBool
 	}
 }
 
@@ -514,7 +525,7 @@ func stepInTrue(s *Scanner, c byte) {
 		(s.last == 'u' && c != 'e') {
 		s.error(c, "Unexpected value")
 	} else if s.last == 'u' && c == 'e' {
-		s.popState() //trues?
+		s.State = StateEndBool
 	}
 }
 
@@ -636,6 +647,11 @@ func stepInNumberExp(s *Scanner, c byte) {
 	}
 
 	s.popState() // Not digit, must be end of number? yeild.
+	s.yield = true
+}
+
+func stepEnd(s *Scanner, c byte) {
+	s.popState() //
 	s.yield = true
 }
 
