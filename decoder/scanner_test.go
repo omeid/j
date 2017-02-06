@@ -128,7 +128,7 @@ func TestValid(t *testing.T) {
 		err := Valid(tt.in)
 		if !reflect.DeepEqual(tt.err, err) {
 			t.Errorf("For:\n%s\nExpected: %#v\nGot:      %#v", tt.in, tt.err, err)
-			break
+			// break
 		}
 	}
 }

@@ -37,8 +37,13 @@ type Value interface {
 	Number() Number
 
 	// String applies to string type.
-	String() string
+	String() String
 }
+
+// The String type is simply a string.
+// It merely exists to keep the fmt package
+// from calling it and resulting in panics.
+type String string
 
 // Member is a JSON object Member.
 type Member interface {

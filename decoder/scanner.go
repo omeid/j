@@ -1,6 +1,9 @@
 package decoder
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 // Valid check if the provide data is correct json document.
 func Valid(src []byte) error {
@@ -13,7 +16,7 @@ func valid(src []byte, scan *Scanner) error {
 	scan.Reset()
 	for _, c := range src {
 		scan.Step(c)
-		if scan.State == StateError {
+		if scan.state == stateError {
 			return scan.err
 		}
 	}
@@ -37,120 +40,123 @@ func (se SyntaxError) Error() string {
 	return se.Position.string() + se.Message
 }
 
-//go:generate stringer -type=State
+//go:generate stringer -type=state
 
-// State is the current state of the scanners state machine.
-type State int
+// state is the current state of the scanners state machine.
+type state int
 
 // The list of possible status the scanner can be in.
 const (
-	StateBeginJSON State = iota // At the beginning there was JSON.
-	StateEndJSON
+	stateBeginJSON state = iota // At the beginning there was JSON.
+	stateEndJSON
 	// stateWhitespace
-	StateBeginObject // member or end.
-	StateInObject    // we are in an object
+	stateBeginObject // member or end.
+	stateInObject    // we are in an object
 
-	StateBeginMember    // seen "," in stateInObject
-	StateInMember       // end of object or , + value
-	StateBeginMemberKey // " then jump into a string.
-	StateEndMemberKey   // expect :
-	StateInMemberValue  // after :, expect a value type.
+	stateBeginMember    // seen "," in stateInObject
+	stateInMember       // end of object or , + value
+	stateBeginMemberKey // " then jump into a string.
+	stateEndMemberKey   // expect :
+	stateInMemberValue  // after :, expect a value type.
 
-	StateBeginArray // value or end.
-	StateInArray    // after value in array, expect Seperator Followed by Value or ].
-	StateArrayValue // after , in a value, expect value type.
+	stateBeginArray      // value or end.
+	stateInArray         // after value in array, expect Seperator Followed by Value or ].
+	stateBeginArrayValue // after , in a value, expect value type.
+	stateEndArray        // ]
 
 	// stateEndObjectValue   // object valued finished, expect key or end of object.
 
-	StateBeginValue // find a value type.
+	stateBeginString // after "
+	stateInString    // string value.
+	stateEndString   // " string end.
 
-	StateInString // string value.
+	stateInStringEscape
 
-	StateInStringEscape
+	stateInStringEscapeU
+	stateInStringEscapeUx
+	stateInStringEscapeUxx
+	stateInStringEscapeUxxx
+	stateInStringEscapeUxxxx
 
-	StateInStringEscapeU
-	StateInStringEscapeUx
-	StateInStringEscapeUxx
-	StateInStringEscapeUxxx
-	StateInStringEscapeUxxxx
+	stateBeginNumber     // we have seen - or a digit.
+	stateInNumber        // just digits, nothing special.
+	stateBeginNumberFrac // we have seen a . after 0 or a digit
+	stateInNumberFrac    // we have seen a digit (0-9) after . eE now allowed.
+	stateBeginNumberExp  // we have seen e or E
+	stateInNumberExp     // we are past (e|E)(+|-|1-9).
 
-	StateBeginNumber     // we have seen - or a digit.
-	StateInNumber        // just digits, nothing special.
-	StateBeginNumberFrac // we have seen a . after 0 or a digit
-	StateInNumberFrac    // we have seen a digit (0-9) after . eE now allowed.
-	StateBeginNumberExp  // we have seen e or E
-	StateInNumberExp     // we are past (e|E)(+|-|1-9).
+	stateInFalse // false
+	stateInTrue  // true
+	stateEndBool
+	stateInNull // null
 
-	StateInFalse // false
-	StateInTrue  // true
-	StateEndBool
-	StateInNull // null
-
-	StateError // Something is wrong, check s.err
+	stateError // Something is wrong, check s.err
 )
 
-var steps = map[State]func(*Scanner, byte){
-	StateBeginJSON: stepBeginJSON,
-	StateEndJSON:   stepEndJSON,
+var steps = map[state]func(*Scanner, byte){
+	stateBeginJSON: stepBeginJSON,
+	stateEndJSON:   stepEndJSON,
 
-	StateBeginValue: stepBeginValue,
+	stateBeginObject:    stepBeginObject,
+	stateInObject:       stepInObject,
+	stateBeginMember:    stepBeginMember,
+	stateBeginMemberKey: stepBeginMemberKey,
+	stateEndMemberKey:   stepEndMemberKey,
+	stateInMemberValue:  stepInMemberValue,
+	stateInMember:       stepInMember,
 
-	StateBeginObject:    stepBeginObject,
-	StateInObject:       stepInObject,
-	StateBeginMember:    stepBeginMember,
-	StateBeginMemberKey: stepBeginMemberKey,
-	StateEndMemberKey:   stepEndMemberKey,
-	StateInMemberValue:  stepInMemberValue,
-	StateInMember:       stepInMember,
+	stateBeginArray:      stepBeginArray,
+	stateInArray:         stepInArray,
+	stateBeginArrayValue: stepBeginArrayValue,
+	stateEndArray:        stepEndArray,
 
-	StateBeginArray: stepBeginArray,
-	StateInArray:    stepInArray,
-	StateArrayValue: stepArrayValue,
+	stateBeginString: stepInString,
+	stateInString:    stepInString,
+	stateEndString:   stepEndString,
 
-	StateInString:            stepInString,
-	StateInStringEscape:      stepInStringEscape,
-	StateInStringEscapeU:     stepInStringEscapeU,
-	StateInStringEscapeUx:    stepInStringEscapeUx,
-	StateInStringEscapeUxx:   stepInStringEscapeUxx,
-	StateInStringEscapeUxxx:  stepInStringEscapeUxxx,
-	StateInStringEscapeUxxxx: stepInStringEscapeUxxxx,
+	stateInStringEscape:      stepInStringEscape,
+	stateInStringEscapeU:     stepInStringEscapeU,
+	stateInStringEscapeUx:    stepInStringEscapeUx,
+	stateInStringEscapeUxx:   stepInStringEscapeUxx,
+	stateInStringEscapeUxxx:  stepInStringEscapeUxxx,
+	stateInStringEscapeUxxxx: stepInStringEscapeUxxxx,
 
-	StateInFalse: stepInFalse,
-	StateEndBool: stepEnd,
-	StateInTrue:  stepInTrue,
-	StateInNull:  stepInNull,
+	stateInFalse: stepInFalse,
+	stateEndBool: stepEnd,
+	stateInTrue:  stepInTrue,
+	stateInNull:  stepInNull,
 
-	StateBeginNumber:     stepBeginNumber,
-	StateInNumber:        stepInNumber,
-	StateBeginNumberFrac: stepBeginNumberFrac,
-	StateInNumberFrac:    stepInNumberFrac,
-	StateBeginNumberExp:  stepBeginNumberExp,
-	StateInNumberExp:     stepInNumberExp,
+	stateBeginNumber:     stepBeginNumber,
+	stateInNumber:        stepInNumber,
+	stateBeginNumberFrac: stepBeginNumberFrac,
+	stateInNumberFrac:    stepInNumberFrac,
+	stateBeginNumberExp:  stepBeginNumberExp,
+	stateInNumberExp:     stepInNumberExp,
 }
 
 // Scanner is a JSON Scanner.
 type Scanner struct {
-	State State
+	state state
 	pos   Position
 	last  byte //The last token we had.
 	err   *SyntaxError
-	stack []State
+	stack []state
 
 	yield bool
 	// the stack of state
 }
 
-func (s *Scanner) pushState() {
-	s.stack = append(s.stack, s.State)
+func (s *Scanner) pushstate() {
+	s.stack = append(s.stack, s.state)
 }
 
-func (s *Scanner) popState() {
+func (s *Scanner) popstate() {
 	l := len(s.stack)
 
 	if l == 0 {
-		s.State = StateEndJSON
+		s.state = stateEndJSON
 	} else {
-		s.State, s.stack = s.stack[l-1], s.stack[:l-1]
+		s.state, s.stack = s.stack[l-1], s.stack[:l-1]
 	}
 
 }
@@ -166,7 +172,7 @@ func (s *Scanner) eof() {
 		return
 	}
 
-	if s.State != StateEndJSON {
+	if s.state != stateEndJSON {
 		s.err = &SyntaxError{
 			//TODO: Add more context about what state we were.
 			Message:  "Unexpected end of json",
@@ -184,7 +190,7 @@ func (s *Scanner) Reset() {
 	// since a whitespace is valid at the start we use
 	// a space instead of 0
 	s.last = ' '
-	s.State = StateBeginJSON
+	s.state = stateBeginJSON
 }
 
 func (s *Scanner) Error() error {
@@ -204,19 +210,22 @@ func (s *Scanner) Step(c byte) {
 
 	s.pos.advance(c)
 
-	step := steps[s.State]
+	step := steps[s.state]
+	//fmt.Printf(":::%c: %v\n", c, s.state)
 	step(s, c)
 	for s.yield {
 		s.yield = false
-		step = steps[s.State]
+		step = steps[s.state]
 		step(s, c)
+		//fmt.Printf(":.:%c: %v\n", c, s.state)
 	}
+	fmt.Printf(":::%c: %v\n", c, s.state)
 	s.last = c
 }
 
 // error records an error and switches to the error state.
 func (s *Scanner) error(c byte, context string) {
-	s.State = StateError
+	s.state = stateError
 	s.err = &SyntaxError{
 		Message:  "invalid character " + quoteChar(c) + " " + context,
 		Position: s.pos,
@@ -232,9 +241,9 @@ func stepBeginJSON(s *Scanner, c byte) {
 	switch c {
 
 	case '{':
-		s.State = StateBeginObject
+		s.state = stateBeginObject
 	case '[':
-		s.State = StateBeginArray
+		s.state = stateBeginArray
 	default:
 		s.error(c, "expected beginning of json ('{' or '[')")
 	}
@@ -246,7 +255,7 @@ func stepEndJSON(s *Scanner, c byte) {
 		return
 	}
 
-	s.error(0, "unexpected end of json")
+	s.error(c, "unexpected end of json")
 }
 
 func stepBeginObject(s *Scanner, c byte) {
@@ -257,12 +266,12 @@ func stepBeginObject(s *Scanner, c byte) {
 
 	switch c {
 	case '}':
-		s.popState() //
+		s.popstate() //
 	case '"':
-		s.State = StateInObject
-		s.pushState()
-		// s.state = StateInMemberKey
-		s.State = StateBeginMemberKey
+		s.state = stateInObject
+		s.pushstate()
+		// s.state = stateInMemberKey
+		s.state = stateBeginMemberKey
 	default:
 		s.error(c, "expected a pair or end of object")
 	}
@@ -277,10 +286,10 @@ func stepInObject(s *Scanner, c byte) {
 	switch c {
 
 	case '}':
-		s.popState()
+		s.popstate()
 	case ',':
-		s.pushState()
-		s.State = StateBeginMember
+		s.pushstate()
+		s.state = stateBeginMember
 	default:
 		s.error(c, "expected a pair or end of object")
 	}
@@ -294,17 +303,17 @@ func stepBeginMember(s *Scanner, c byte) {
 	}
 
 	if c == '"' {
-		// s.state = StateInMemberKey
-		s.State = StateBeginMemberKey
+		// s.state = stateInMemberKey
+		s.state = stateBeginMemberKey
 	} else {
 		s.error(c, "expected string.")
 	}
 }
 
 func stepBeginMemberKey(s *Scanner, c byte) {
-	s.State = StateEndMemberKey
-	s.pushState()
-	s.State = StateInString
+	s.state = stateEndMemberKey
+	s.pushstate()
+	s.state = stateInString
 }
 
 func stepEndMemberKey(s *Scanner, c byte) {
@@ -316,7 +325,7 @@ func stepEndMemberKey(s *Scanner, c byte) {
 	if c != ':' {
 		s.error(c, "expected a colon")
 	} else {
-		s.State = StateInMemberValue
+		s.state = stateInMemberValue
 	}
 }
 
@@ -326,8 +335,8 @@ func stepInMemberValue(s *Scanner, c byte) {
 		return
 	}
 
-	s.State = StateInMember
-	stepBeginValue(s, c)
+	s.state = stateInMember
+	helperBeginValue(s, c)
 }
 
 func stepInMember(s *Scanner, c byte) {
@@ -339,9 +348,9 @@ func stepInMember(s *Scanner, c byte) {
 	switch c {
 
 	case '}':
-		s.popState() // end of object.
+		s.popstate() // end of object.
 	case ',':
-		s.State = StateBeginMember
+		s.state = stateBeginMember
 	default:
 		s.error(c, "expected } or a value seperator")
 	}
@@ -355,20 +364,16 @@ func stepBeginArray(s *Scanner, c byte) {
 
 	// end or value
 	if c == ']' {
-		s.popState()
+		s.state = stateEndArray
 		return
 	}
 
-	s.State = StateInArray
-	s.pushState()
-	stepBeginValue(s, c)
+	s.state = stateInArray
+	s.pushstate()
+	helperBeginValue(s, c)
 }
 
 func stepInArray(s *Scanner, c byte) {
-
-	// if s.last == ',' || s.last == ']' {
-	// 	c = s.last
-	// }
 
 	if c <= ' ' && isSpace(c) {
 		return
@@ -377,53 +382,58 @@ func stepInArray(s *Scanner, c byte) {
 	switch c {
 
 	case ']':
-		s.popState() // array end.
+		s.state = stateEndArray
 	case ',':
-		s.pushState()
-		s.State = StateArrayValue
+		s.pushstate()
+		s.state = stateBeginArrayValue
 	default:
 		s.error(c, "expected ] or a value seperator")
 	}
 }
 
-func stepArrayValue(s *Scanner, c byte) {
+func stepEndArray(s *Scanner, c byte) {
+	s.yield = true
+	s.popstate() // end of string.
+}
+
+func stepBeginArrayValue(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
 	}
 
-	s.State = StateInArray
-	stepBeginValue(s, c)
+	s.state = stateInArray
+	helperBeginValue(s, c)
 }
 
-func stepBeginValue(s *Scanner, c byte) {
+func helperBeginValue(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
 	}
 
 	if '1' <= c && c <= '9' {
-		s.State = StateBeginNumber
+		s.state = stateBeginNumber
 		return
 	}
 
 	switch c {
 	case '{':
-		s.State = StateBeginObject
+		s.state = stateBeginObject
 	case '[':
-		s.State = StateBeginArray
+		s.state = stateBeginArray
 	case '"':
-		s.State = StateInString
+		s.state = stateBeginString
 	case 'f':
-		s.State = StateInFalse
+		s.state = stateInFalse
 	case 't':
-		s.State = StateInTrue
+		s.state = stateInTrue
 	case 'n':
-		s.State = StateInNull
+		s.state = stateInNull
 	case '-':
-		s.State = StateBeginNumber
+		s.state = stateBeginNumber
 	case '0':
-		s.State = StateBeginNumber
+		s.state = stateBeginNumber
 	default:
 		s.error(c, "expected a value type")
 	}
@@ -438,11 +448,18 @@ func stepInString(s *Scanner, c byte) {
 
 	switch c {
 	case '\\':
-		s.pushState()
-		s.State = StateInStringEscape
+		s.pushstate()
+		s.state = stateInStringEscape
 	case '"':
-		s.popState() // end of string.
+		s.state = stateEndString
+	default:
+		s.state = stateInString
 	}
+}
+
+func stepEndString(s *Scanner, c byte) {
+	s.yield = true
+	s.popstate() // end of string.
 }
 
 // basic escaping, \uXXXX case is it's own state.
@@ -450,9 +467,9 @@ func stepInStringEscape(s *Scanner, c byte) {
 
 	switch c {
 	case '"', '\\', '/', 'b', 'f', 'n', 'r', 't':
-		s.popState() // end of escape.
+		s.popstate() // end of escape.
 	case 'u':
-		s.State = StateInStringEscapeU
+		s.state = stateInStringEscapeU
 	default:
 		s.error(c, "Expected a qoutation mark, reverse solidus, or a control character")
 	}
@@ -469,7 +486,7 @@ func stepInStringEscapeU(s *Scanner, c byte) {
 	}
 
 	if isHexDig(c) {
-		s.State = StateInStringEscapeUx
+		s.state = stateInStringEscapeUx
 	} else {
 		s.error(c, errorExpectedHexDigit)
 	}
@@ -477,7 +494,7 @@ func stepInStringEscapeU(s *Scanner, c byte) {
 
 func stepInStringEscapeUx(s *Scanner, c byte) {
 	if isHexDig(c) {
-		s.State = StateInStringEscapeUxx
+		s.state = stateInStringEscapeUxx
 	} else {
 		s.error(c, errorExpectedHexDigit)
 	}
@@ -485,7 +502,7 @@ func stepInStringEscapeUx(s *Scanner, c byte) {
 
 func stepInStringEscapeUxx(s *Scanner, c byte) {
 	if isHexDig(c) {
-		s.State = StateInStringEscapeUxxx
+		s.state = stateInStringEscapeUxxx
 	} else {
 		s.error(c, errorExpectedHexDigit)
 	}
@@ -493,7 +510,7 @@ func stepInStringEscapeUxx(s *Scanner, c byte) {
 
 func stepInStringEscapeUxxx(s *Scanner, c byte) {
 	if isHexDig(c) {
-		s.State = StateInStringEscapeUxxxx
+		s.state = stateInStringEscapeUxxxx
 	} else {
 		s.error(c, errorExpectedHexDigit)
 	}
@@ -501,7 +518,7 @@ func stepInStringEscapeUxxx(s *Scanner, c byte) {
 
 func stepInStringEscapeUxxxx(s *Scanner, c byte) {
 	if isHexDig(c) {
-		s.popState()
+		s.popstate()
 	} else {
 		s.error(c, errorExpectedHexDigit)
 	}
@@ -514,7 +531,7 @@ func stepInFalse(s *Scanner, c byte) {
 		(s.last == 's' && c != 'e') {
 		s.error(c, "Unexpected value")
 	} else if s.last == 's' && c == 'e' {
-		s.State = StateEndBool
+		s.state = stateEndBool
 	}
 }
 
@@ -525,7 +542,7 @@ func stepInTrue(s *Scanner, c byte) {
 		(s.last == 'u' && c != 'e') {
 		s.error(c, "Unexpected value")
 	} else if s.last == 'u' && c == 'e' {
-		s.State = StateEndBool
+		s.state = stateEndBool
 	}
 }
 
@@ -536,7 +553,7 @@ func stepInNull(s *Scanner, c byte) {
 		(s.last == 'l' && c != 'l') {
 		s.error(c, "Unexpected value")
 	} else if s.last == 'l' && c == 'l' {
-		s.popState() //nullols?
+		s.popstate() //nullols?
 	}
 }
 
@@ -551,23 +568,23 @@ func stepBeginNumber(s *Scanner, c byte) {
 
 		switch c {
 		case 'e', 'E':
-			s.State = StateBeginNumberExp
+			s.state = stateBeginNumberExp
 		case '.':
-			s.State = StateBeginNumberFrac
+			s.state = stateBeginNumberFrac
 		default:
 			// possibly the value '0', yeild.
-			s.popState()
+			s.popstate()
 			s.yield = true
 		}
 	} else if s.last == '-' {
 		if '0' <= c && c <= '9' {
-			s.State = StateInNumber
+			s.state = stateInNumber
 		} else {
 			s.error(c, "expected digit")
 		}
 	} else if '1' <= s.last && s.last <= '9' {
 		// after 1-9
-		s.State = StateInNumber
+		s.state = stateInNumber
 		s.yield = true //We are in number.
 	} else {
 		// why are we here?
@@ -584,11 +601,11 @@ func stepInNumber(s *Scanner, c byte) {
 
 	switch c {
 	case 'e', 'E':
-		s.State = StateBeginNumberExp
+		s.state = stateBeginNumberExp
 	case '.':
-		s.State = StateBeginNumberFrac
+		s.state = stateBeginNumberFrac
 	default:
-		s.popState() // Not digit, not eE, not ., must be end of number? yeild.
+		s.popstate() // Not digit, not eE, not ., must be end of number? yeild.
 		s.yield = true
 	}
 }
@@ -596,15 +613,15 @@ func stepInNumber(s *Scanner, c byte) {
 func stepBeginNumberFrac(s *Scanner, c byte) {
 	// we have seen a '.' in a number
 	if '0' <= c && c <= '9' {
-		s.State = StateInNumberFrac
+		s.state = stateInNumberFrac
 		return
 	}
 
 	switch c {
 	case 'e', 'E':
-		s.State = StateInNumberExp
+		s.state = stateInNumberExp
 	default:
-		s.popState() // Not digit, not eE, not must be end of number? yeild.
+		s.popstate() // Not digit, not eE, not must be end of number? yeild.
 		s.yield = true
 	}
 }
@@ -617,9 +634,9 @@ func stepInNumberFrac(s *Scanner, c byte) {
 
 	switch c {
 	case 'e', 'E':
-		s.State = StateBeginNumberExp
+		s.state = stateBeginNumberExp
 	default:
-		s.popState() // Not digit, not eE, not must be end of number? yeild.
+		s.popstate() // Not digit, not eE, not must be end of number? yeild.
 		s.yield = true
 	}
 }
@@ -627,7 +644,7 @@ func stepInNumberFrac(s *Scanner, c byte) {
 func stepBeginNumberExp(s *Scanner, c byte) {
 
 	if c == '-' || c == '+' || '1' <= c && c <= '9' {
-		s.State = StateInNumberExp
+		s.state = stateInNumberExp
 		return
 	}
 
@@ -646,12 +663,12 @@ func stepInNumberExp(s *Scanner, c byte) {
 		return
 	}
 
-	s.popState() // Not digit, must be end of number? yeild.
+	s.popstate() // Not digit, must be end of number? yeild.
 	s.yield = true
 }
 
 func stepEnd(s *Scanner, c byte) {
-	s.popState() //
+	s.popstate() //
 	s.yield = true
 }
 
