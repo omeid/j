@@ -9,8 +9,7 @@ import (
 // Array is a mutable extension of j.Value
 type Array interface {
 	Value
-	j.Value
-	Add(value j.Value) error
+	Add(value j.Value)
 	Remove(index int) error
 }
 
@@ -28,9 +27,8 @@ func (a *array) Value() j.Value {
 	return a
 }
 
-func (a *array) Add(value j.Value) error {
+func (a *array) Add(value j.Value) {
 	a.values = append(a.values, value)
-	return nil
 }
 
 func (a *array) Remove(index int) error {

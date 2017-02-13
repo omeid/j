@@ -1,6 +1,7 @@
-package decoder
+package codec
 
 import (
+	// "fmt"
 	"fmt"
 	"strconv"
 )
@@ -50,8 +51,9 @@ const (
 	stateBeginJSON state = iota // At the beginning there was JSON.
 	stateEndJSON
 	// stateWhitespace
-	stateBeginObject // member or end.
+	stateBeginObject // { member or end.
 	stateInObject    // we are in an object
+	stateEndObject   // }
 
 	stateBeginMember    // seen "," in stateInObject
 	stateInMember       // end of object or , + value
@@ -84,6 +86,7 @@ const (
 	stateInNumberFrac    // we have seen a digit (0-9) after . eE now allowed.
 	stateBeginNumberExp  // we have seen e or E
 	stateInNumberExp     // we are past (e|E)(+|-|1-9).
+	stateEndNumber       // end of a number
 
 	stateInFalse // false
 	stateInTrue  // true
@@ -98,6 +101,7 @@ var steps = map[state]func(*Scanner, byte){
 	stateEndJSON:   stepEndJSON,
 
 	stateBeginObject:    stepBeginObject,
+	stateEndObject:      stepEnd,
 	stateInObject:       stepInObject,
 	stateBeginMember:    stepBeginMember,
 	stateBeginMemberKey: stepBeginMemberKey,
@@ -108,11 +112,11 @@ var steps = map[state]func(*Scanner, byte){
 	stateBeginArray:      stepBeginArray,
 	stateInArray:         stepInArray,
 	stateBeginArrayValue: stepBeginArrayValue,
-	stateEndArray:        stepEndArray,
+	stateEndArray:        stepEnd,
 
 	stateBeginString: stepInString,
 	stateInString:    stepInString,
-	stateEndString:   stepEndString,
+	stateEndString:   stepEnd,
 
 	stateInStringEscape:      stepInStringEscape,
 	stateInStringEscapeU:     stepInStringEscapeU,
@@ -132,6 +136,7 @@ var steps = map[state]func(*Scanner, byte){
 	stateInNumberFrac:    stepInNumberFrac,
 	stateBeginNumberExp:  stepBeginNumberExp,
 	stateInNumberExp:     stepInNumberExp,
+	stateEndNumber:       stepEnd,
 }
 
 // Scanner is a JSON Scanner.
@@ -147,6 +152,7 @@ type Scanner struct {
 }
 
 func (s *Scanner) pushstate() {
+	// // fmt.Printf("push %v\n", s.state)
 	s.stack = append(s.stack, s.state)
 }
 
@@ -211,15 +217,14 @@ func (s *Scanner) Step(c byte) {
 	s.pos.advance(c)
 
 	step := steps[s.state]
-	//fmt.Printf(":::%c: %v\n", c, s.state)
 	step(s, c)
+	fmt.Printf(" [%t] %v -> %v %v\n", s.yield, quoteChar(c), s.stack, s.state)
 	for s.yield {
 		s.yield = false
 		step = steps[s.state]
 		step(s, c)
-		//fmt.Printf(":.:%c: %v\n", c, s.state)
+		fmt.Printf("![%t] %v -> %v %v\n", s.yield, quoteChar(c), s.stack, s.state)
 	}
-	fmt.Printf(":::%c: %v\n", c, s.state)
 	s.last = c
 }
 
@@ -255,7 +260,7 @@ func stepEndJSON(s *Scanner, c byte) {
 		return
 	}
 
-	s.error(c, "unexpected end of json")
+	s.error(c, "expected whitespace or nothing")
 }
 
 func stepBeginObject(s *Scanner, c byte) {
@@ -266,7 +271,7 @@ func stepBeginObject(s *Scanner, c byte) {
 
 	switch c {
 	case '}':
-		s.popstate() //
+		s.state = stateEndObject
 	case '"':
 		s.state = stateInObject
 		s.pushstate()
@@ -391,18 +396,14 @@ func stepInArray(s *Scanner, c byte) {
 	}
 }
 
-func stepEndArray(s *Scanner, c byte) {
-	s.yield = true
-	s.popstate() // end of string.
-}
-
 func stepBeginArrayValue(s *Scanner, c byte) {
 	// ignore white space nothing changes
 	if c <= ' ' && isSpace(c) {
 		return
 	}
 
-	s.state = stateInArray
+	// s.state = stateInArray
+	// s.pushstate()
 	helperBeginValue(s, c)
 }
 
@@ -446,6 +447,8 @@ func stepInString(s *Scanner, c byte) {
 		return
 	}
 
+	s.state = stateInString
+
 	switch c {
 	case '\\':
 		s.pushstate()
@@ -455,11 +458,6 @@ func stepInString(s *Scanner, c byte) {
 	default:
 		s.state = stateInString
 	}
-}
-
-func stepEndString(s *Scanner, c byte) {
-	s.yield = true
-	s.popstate() // end of string.
 }
 
 // basic escaping, \uXXXX case is it's own state.
@@ -559,6 +557,7 @@ func stepInNull(s *Scanner, c byte) {
 
 func stepBeginNumber(s *Scanner, c byte) {
 
+	// TODO: cleanup this!
 	if s.last == '0' {
 		// after 0
 		if '0' <= c && c <= '9' {
@@ -572,25 +571,44 @@ func stepBeginNumber(s *Scanner, c byte) {
 		case '.':
 			s.state = stateBeginNumberFrac
 		default:
-			// possibly the value '0', yeild.
-			s.popstate()
+			//Possibly just `0`
+			s.state = stateEndNumber
 			s.yield = true
 		}
-	} else if s.last == '-' {
+		return
+	}
+
+	if s.last == '-' {
 		if '0' <= c && c <= '9' {
 			s.state = stateInNumber
 		} else {
 			s.error(c, "expected digit")
 		}
-	} else if '1' <= s.last && s.last <= '9' {
-		// after 1-9
-		s.state = stateInNumber
-		s.yield = true //We are in number.
-	} else {
-		// why are we here?
-		s.error(c, "scanner-error: In Begin Number state not after 0 or -")
+		return
+
 	}
 
+	if '1' <= s.last && s.last <= '9' {
+		// after 1-9
+		if '0' <= c && c <= '9' {
+			s.state = stateInNumber
+		} else {
+			switch c {
+			case 'e', 'E':
+				s.state = stateBeginNumberExp
+			case '.':
+				s.state = stateBeginNumberFrac
+			default:
+				//Possibly just `0`
+				s.state = stateEndNumber
+				s.yield = true
+			}
+		}
+
+		return
+	}
+
+	s.error(c, "scanner-error: In Begin Number state not after 0 or -")
 }
 
 func stepInNumber(s *Scanner, c byte) {
@@ -599,14 +617,21 @@ func stepInNumber(s *Scanner, c byte) {
 		return
 	}
 
+	if c <= ' ' && isSpace(c) {
+		s.state = stateEndNumber
+		return
+	}
+
 	switch c {
 	case 'e', 'E':
 		s.state = stateBeginNumberExp
 	case '.':
 		s.state = stateBeginNumberFrac
-	default:
-		s.popstate() // Not digit, not eE, not ., must be end of number? yeild.
+	case ',', ']', '}':
+		s.state = stateEndNumber
 		s.yield = true
+	default:
+		s.error(c, "in number")
 	}
 }
 
@@ -617,13 +642,7 @@ func stepBeginNumberFrac(s *Scanner, c byte) {
 		return
 	}
 
-	switch c {
-	case 'e', 'E':
-		s.state = stateInNumberExp
-	default:
-		s.popstate() // Not digit, not eE, not must be end of number? yeild.
-		s.yield = true
-	}
+	s.error(c, "expected 0-9")
 }
 
 func stepInNumberFrac(s *Scanner, c byte) {
@@ -636,7 +655,8 @@ func stepInNumberFrac(s *Scanner, c byte) {
 	case 'e', 'E':
 		s.state = stateBeginNumberExp
 	default:
-		s.popstate() // Not digit, not eE, not must be end of number? yeild.
+		// Not digit, not eE, not must be end of number? yeild.
+		s.state = stateEndNumber
 		s.yield = true
 	}
 }
@@ -663,12 +683,19 @@ func stepInNumberExp(s *Scanner, c byte) {
 		return
 	}
 
-	s.popstate() // Not digit, must be end of number? yeild.
 	s.yield = true
+	s.state = stateEndNumber
 }
 
 func stepEnd(s *Scanner, c byte) {
+	// // fmt.Printf("%v:\n", quoteChar(c))
+	fmt.Printf("was: %v %v\n", s.stack, s.state)
 	s.popstate() //
+	if s.state == stateInArray && s.last == ',' {
+		s.pushstate()
+		s.state = stateBeginArrayValue
+	}
+	fmt.Printf("is:  %v %v\n", s.stack, s.state)
 	s.yield = true
 }
 

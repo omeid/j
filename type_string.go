@@ -4,9 +4,9 @@ package j
 
 import "fmt"
 
-const _Type_name = "InvalidTypeObjectTypeMemberTypeArrayTypeBoolTypeNumberTypeStringTypeNullType"
+const _Type_name = "InvalidTypeObjectTypeArrayTypeBoolTypeNumberTypeStringTypeNullType"
 
-var _Type_index = [...]uint8{0, 11, 21, 31, 40, 48, 58, 68, 76}
+var _Type_index = [...]uint8{0, 11, 21, 30, 38, 48, 58, 66}
 
 func (i Type) String() string {
 	if i >= Type(len(_Type_index)-1) {

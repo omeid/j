@@ -1,4 +1,4 @@
-package decoder
+package codec
 
 import (
 	"reflect"
@@ -6,7 +6,7 @@ import (
 )
 
 type simpleExamples struct {
-	in  []byte
+	in  b
 	err error
 }
 
@@ -22,90 +22,123 @@ func makeSyntaxError(offset, line, column int, msg string) *SyntaxError {
 }
 
 var examples = []simpleExamples{
+	//fuzz tests
 	{
-		in:  []byte(`}`),
+		in:  b(`[0.0"]`),
+		err: makeSyntaxError(5, 1, 5, "invalid character '\"' expected ] or a value seperator"),
+	},
+	{
+		in:  b(`["\ufffd0"]`),
+		err: nil,
+	},
+	{
+		in:  b(`[20]]`),
+		err: makeSyntaxError(5, 1, 5, "invalid character ']' expected whitespace or nothing"),
+	},
+	{
+		in:  b(`[0,[0,[]]]`),
+		err: nil,
+	},
+	{
+		in:  b(`[[[[]]]]`),
+		err: nil,
+	},
+	{
+		in:  b(`[60"]`),
+		err: makeSyntaxError(4, 1, 4, "invalid character '\"' in number"),
+	},
+	{
+		in:  b(`[""]`),
+		err: nil,
+	},
+	// end fuzz tests
+	{
+		in:  b(`}`),
 		err: makeSyntaxError(1, 1, 1, "invalid character '}' expected beginning of json ('{' or '[')"),
 	},
 	{
-		in:  []byte("       \n\r\t {}"),
+		in:  b("       \n\r\t {}"),
 		err: nil,
 	},
 	{
-		in:  []byte(`{`),
+		in:  b(`{`),
 		err: makeSyntaxError(2, 1, 2, "Unexpected end of json"),
 	},
 	{
-		in:  []byte(`]`),
+		in:  b(`]`),
 		err: makeSyntaxError(1, 1, 1, "invalid character ']' expected beginning of json ('{' or '[')"),
 	},
 	{
-		in:  []byte(`[]`),
+		in:  b(`[]`),
 		err: nil,
 	},
 	{
-		in:  []byte(`{,`),
+		in:  b(`{,`),
 		err: makeSyntaxError(2, 1, 2, "invalid character ',' expected a pair or end of object"),
 	},
 	{
-		in:  []byte(`{"key",`),
+		in:  b(`{"key",`),
 		err: makeSyntaxError(7, 1, 7, "invalid character ',' expected a colon"),
 	},
 	{
-		in:  []byte(`{"key":}`),
+		in:  b(`{"key":}`),
 		err: makeSyntaxError(8, 1, 8, "invalid character '}' expected a value type"),
 	},
 	{
-		in:  []byte(`{"key":{}}`),
+		in:  b(`{"key":{}}`),
 		err: nil,
 	},
 	{
-		in:  []byte(`{"multi": {}, "key": {}}`),
+		in:  b(`{"multi": {}, "key": {}}`),
 		err: nil,
 	},
 	{
-		in:  []byte(`{"key":{"nested": {}}}`),
+		in:  b(`{"key":{"nested": {}}}`),
 		err: nil,
 	},
 	{
-		in:  []byte(`{"nexted":{"multi": {}, "key": []}}`),
+		in:  b(`{"nexted":{"multi": {}, "key": []}}`),
 		err: nil,
 	},
 	{
-		in:  []byte(`["simple"]`),
+		in:  b(`["simple"]`),
 		err: nil,
 	},
 	{
-		in:  []byte(`["multi"  , "value"]`),
+		in:  b(`["multi"  , "value"]`),
 		err: nil,
 	},
 	{
-		in:  []byte(`{"simple": true, "wrong": false, "value" : null }`),
+		in:  b(`{"simple": true, "wrong": false, "value" : null }`),
 		err: nil,
 	},
 	{
-		in:  []byte(`{"a": true, "b": [true] }`),
+		in:  b(`{"a": true, "b": [true] }`),
 		err: nil,
 	},
 	{
-		in:  []byte(`{"escaped": "\"\\\/\b\f\n\r\t", "bad": "\x" }`),
+		in:  b(`{"escaped": "\"\\\/\b\f\n\r\t", "bad": "\x" }`),
 		err: makeSyntaxError(42, 1, 42, "invalid character 'x' Expected a qoutation mark, reverse solidus, or a control character"),
 	},
 	{
-		in:  []byte(`{"escaped": "\\\n\r\u000000NotHex\uFFFFFF\uffffff", "bad": "\uL" }`),
+		in:  b(`{"escaped": "\\\n\r\u000000NotHex\uFFFFFF\uffffff", "bad": "\uL" }`),
 		err: makeSyntaxError(63, 1, 63, "invalid character 'L' Expected a Hexadecimal digit."),
 	},
 	{
-		in:  []byte(`{"\\\/\b\f\uF00F00key":{"nested\n\t": {}}}`),
+		in:  b(`{"\\\/\b\f\uF00F00key":{"nested\n\t": {}}}`),
 		err: nil,
 	},
 	{
-		in:  []byte(`{"\\\/\b\f\uF00F00key":{"nested\n\t": ["BadEscape: \uX"]}}`),
+		in:  b(`{"\\\/\b\f\uF00F00key":{"nested\n\t": ["BadEscape: \uX"]}}`),
 		err: makeSyntaxError(54, 1, 54, "invalid character 'X' Expected a Hexadecimal digit."),
 	},
 
 	{
-		in: []byte(`[
+		in: b(`[
 0,
+0 ,
+ 0 ,
+ 0,
 -3,
 -234324,
 5,
@@ -120,6 +153,14 @@ var examples = []simpleExamples{
 ]`),
 		err: nil,
 	},
+	{
+		in:  b(`[ 0, 0 ,  0 ,  0, -3, -234324, 5, 324132432, -7, -0.8, -1.9, 0.10, 1.11, -0.9e-12, -0.10E+13]`),
+		err: nil,
+	},
+	{
+		in:  b(`[ 0, 0 ,  0 ,  0, -3, -234324, 5, 324132432, -7, -0.8, -1.9, 0.10, 1.11, -0.9e-12, -0.10E+13 ]`),
+		err: nil,
+	},
 }
 
 func TestValid(t *testing.T) {
@@ -128,7 +169,7 @@ func TestValid(t *testing.T) {
 		err := Valid(tt.in)
 		if !reflect.DeepEqual(tt.err, err) {
 			t.Errorf("For:\n%s\nExpected: %#v\nGot:      %#v", tt.in, tt.err, err)
-			// break
+			break
 		}
 	}
 }

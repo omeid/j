@@ -51,8 +51,18 @@ func CheckPanics(t *testing.T, v j.Value) {
 		},
 		methodCheck{
 			mustPanic: typ != j.NumberType,
-			method:    func(v j.Value) { v.Number() },
-			name:      "Number",
+			method:    func(v j.Value) { v.Int64() },
+			name:      "Int64",
+		},
+		methodCheck{
+			mustPanic: typ != j.NumberType,
+			method:    func(v j.Value) { v.Float64() },
+			name:      "Float64",
+		},
+		methodCheck{
+			mustPanic: typ != j.NumberType,
+			method:    func(v j.Value) { v.Raw() },
+			name:      "Raw",
 		},
 		methodCheck{
 			mustPanic: typ != j.StringType,

@@ -9,13 +9,13 @@ type String interface {
 }
 
 // NewString creates a new mutable String
-func NewString(raw []byte) String {
-	return &sstring{raw: raw}
+func NewString(text string) String {
+	return &sstring{text: text}
 }
 
 type sstring struct {
 	value
-	raw []byte
+	text string
 }
 
 func (s *sstring) Value() j.Value {
@@ -28,6 +28,5 @@ func (s sstring) Type() j.Type {
 }
 
 func (s *sstring) String() j.String {
-	//TODO: unescape
-	return j.String(s.raw)
+	return j.String(s.text)
 }

@@ -1,0 +1,30 @@
+{{ define "file" }}
+  package {{ .Package.Name }} 
+
+  import (
+  "github.com/omeid/j"
+  "github.com/omeid/j/mutable"
+  "github.com/pkg/errors"
+  )
+
+  {{
+{{ end }}
+
+{{ define "ToJSON" }}
+  func (value *{{.Name}} ) FromJSON(input j.Value) error {
+
+  if t := input.Type(); t != j.{{ jType(.Type }} {
+  return errors.Wrap(j.ErrorUnexpectedType, t.Error())
+  }
+
+{{ end }}
+
+
+{{ define "FromJSON" }}
+{{ end }}
+
+
+Object: struct, map
+Array: slice, array
+Number: uint, int, float
+

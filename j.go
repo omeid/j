@@ -10,7 +10,6 @@ type Type uint
 const (
 	InvalidType Type = iota
 	ObjectType
-	MemberType
 	ArrayType
 	BoolType
 	NumberType
@@ -25,6 +24,7 @@ type Value interface {
 	Type() Type
 
 	// Object applies to Object type.
+	Member(string) Value
 	Members() []Member
 
 	// Array applies to Array type.
@@ -34,7 +34,10 @@ type Value interface {
 	Bool() bool
 
 	// Number applies to Number type.
-	Number() Number
+	Float64() (float64, error)
+	Int64() (int64, error)
+	Uint64() (uint64, error)
+	Raw() []byte
 
 	// String applies to string type.
 	String() String
@@ -52,13 +55,6 @@ type Member interface {
 
 	Name() string
 	Value() Value
-}
-
-// Number is a json number type.
-type Number interface {
-	Float64() (float64, error)
-	Int64() (int64, error)
-	Raw() []byte
 }
 
 // Iterator is the common interface for JSON iterators.

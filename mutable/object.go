@@ -11,19 +11,18 @@ import (
 // Type j.ObjecType.
 type Object interface {
 	Value
-	j.Value
-	Add(name string, value j.Value) error
+	Add(Member) error
 	Remove(name string) error
 }
 
 // NewObject creates a new mutable object
 func NewObject() Object {
-	return &object{members: []j.Member{}}
+	return &object{members: map[string]j.Member{}}
 }
 
 type object struct {
 	value
-	members []j.Member
+	members map[string]j.Member
 }
 
 func (o *object) Value() j.Value {
@@ -32,26 +31,24 @@ func (o *object) Value() j.Value {
 
 // Add the provided value at said key point, it is your responsiblity to make
 // sure there is no duplicate keys.
-func (o *object) Add(name string, value j.Value) error {
-	// m := NewMember()
-	// m.SetKey(key)
-	// m.SetValue(value)
+func (o *object) Add(m Member) error {
+	key := m.Name()
 
-	// o.members = append(o.members, m)
+	if _, ok := o.members[key]; ok {
+		return errors.New("Member already exists.")
+	}
+	o.members[key] = m
 	return nil
 }
 
 // Removes the Member at the provided key, it is your responsiblity to make sure
 // the value exists.
 func (o *object) Remove(name string) error {
-	for i, m := range o.members {
-		if m.Name() == name {
-			o.members[i] = o.members[len(o.members)-1]
-			o.members = o.members[:len(o.members)-1]
-			return nil
-		}
+	if _, ok := o.members[name]; !ok {
+		return errors.New("No Such Member")
 	}
-	return errors.New("No Such Member")
+	delete(o.members, name)
+	return nil
 }
 
 // j.Value methods
@@ -61,5 +58,21 @@ func (o object) Type() j.Type {
 }
 
 func (o *object) Members() []j.Member {
-	return o.members
+	ms := make([]j.Member, len(o.members))
+	i := 0
+	for _, m := range o.members {
+		ms[i] = m
+		i++
+	}
+
+	return ms
+}
+
+func (o *object) Member(name string) j.Value {
+	m, ok := o.members[name]
+	if !ok {
+		return nil
+	}
+
+	return m.Value()
 }

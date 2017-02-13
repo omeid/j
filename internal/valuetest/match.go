@@ -1,4 +1,4 @@
-package decoder
+package valuetest
 
 import (
 	"bytes"
@@ -82,8 +82,8 @@ func matchArray(a j.Value, b j.Value) bool {
 
 func matchNumber(a j.Value, b j.Value) bool {
 
-	ar := a.Number().Raw()
-	br := b.Number().Raw()
+	ar := a.Raw()
+	br := b.Raw()
 
 	return bytes.Compare(ar, br) == 0
 }

@@ -9,7 +9,6 @@ import (
 
 var Types = []j.Type{
 	j.ObjectType,
-	j.MemberType,
 	j.ArrayType,
 	j.BoolType,
 	j.NumberType,
@@ -20,7 +19,6 @@ var Types = []j.Type{
 // Just used as reference to keep all "New" functions.
 var _ = map[j.Type]interface{}{
 	j.ObjectType: NewObject,
-	j.MemberType: NewMember,
 	j.ArrayType:  NewArray,
 	j.BoolType:   NewBool,
 	j.NumberType: NewNumber,
@@ -45,7 +43,7 @@ func TestNewNull(t *testing.T) {
 }
 
 func TestNewString(t *testing.T) {
-	n := NewString(nil)
+	n := NewString("")
 
 	checkValueType(t, n, j.StringType)
 	valuetest.CheckPanics(t, n.Value())
