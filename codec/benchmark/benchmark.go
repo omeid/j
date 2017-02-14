@@ -1,26 +1,6 @@
-package codec
+package benchmark
 
-import (
-	"io/ioutil"
-
-	"github.com/omeid/j"
-	"github.com/omeid/j/mutable"
-)
-
-var testfileExample []byte
-var testdocExample j.Value
-
-func init() {
-	var err error
-	testfileExample, err = ioutil.ReadFile("testdata/example.json")
-	if err != nil {
-		panic(err)
-	}
-
-	root := mutable.NewObject()
-	// root.Add(mutable.NewMember("", "statuses", makeStatuses()))
-	testdocExample = root.Value()
-}
+var xlStructData XLStruct
 
 type SearchMetadata struct {
 	CompletedIn float64 `json:"completed_in"`
@@ -146,6 +126,3 @@ type LargeStruct struct {
 type XLStruct struct {
 	Data []LargeStruct
 }
-
-// func TestExample(t *testing.T) {
-// }

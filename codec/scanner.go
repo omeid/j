@@ -1,7 +1,9 @@
 package codec
 
-import (
-	// "fmt"
+import
+// "fmt"
+
+(
 	"fmt"
 	"strconv"
 )
@@ -688,14 +690,14 @@ func stepInNumberExp(s *Scanner, c byte) {
 }
 
 func stepEnd(s *Scanner, c byte) {
-	// // fmt.Printf("%v:\n", quoteChar(c))
-	fmt.Printf("was: %v %v\n", s.stack, s.state)
+	// fmt.Printf("%v:\n", quoteChar(c))
+	// fmt.Printf("was: %v %v\n", s.stack, s.state)
 	s.popstate() //
 	if s.state == stateInArray && s.last == ',' {
 		s.pushstate()
 		s.state = stateBeginArrayValue
 	}
-	fmt.Printf("is:  %v %v\n", s.stack, s.state)
+	// fmt.Printf("is:  %v %v\n", s.stack, s.state)
 	s.yield = true
 }
 

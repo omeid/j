@@ -1,4 +1,4 @@
-package codec
+package benchmark
 
 import (
 	"github.com/omeid/j"

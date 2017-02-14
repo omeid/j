@@ -29,7 +29,7 @@ func Decode(input []byte) (j.Value, error) {
 	// fmt.Printf("\n\nvalid:\n")
 	err := valid(input, &scan)
 	if err != nil {
-		fmt.Printf("\n\n  !!! Failed At Valid !!! \n\n")
+		// fmt.Printf("\n\n  !!! Failed At Valid !!! \n\n")
 		return nil, err
 	}
 
@@ -37,7 +37,7 @@ func Decode(input []byte) (j.Value, error) {
 
 	scan.Reset()
 
-	fmt.Printf("\n\ndecode:\n")
+	// fmt.Printf("\n\ndecode:\n")
 	for {
 		if scan.state != stateBeginJSON {
 			break
@@ -225,7 +225,7 @@ func nextArray(scan *Scanner, read *reader) (j.Value, error) {
 	for {
 		v, err := nextValue(scan, read)
 		if err != nil {
-			fmt.Printf("errr %v\n", err)
+			// fmt.Printf("errr %v\n", err)
 			return nil, err
 		}
 
@@ -290,17 +290,17 @@ func nextString(scan *Scanner, read *reader) (j.Value, error) {
 		b, err = step(scan, read)
 
 		if err != nil {
-			fmt.Printf("errxr: %v\n", err)
+			// fmt.Printf("errxr: %v\n", err)
 			return nil, err
 		}
 
-		fmt.Printf("state %v\n", scan.state)
+		// fmt.Printf("state %v\n", scan.state)
 		if scan.state == stateInString ||
 			(scan.state >= stateInStringEscape &&
 				scan.state <= stateInStringEscapeUxxxx) {
 			s = append(s, b)
 		} else {
-			fmt.Printf("breaking %v\n", scan.state)
+			// fmt.Printf("breaking %v\n", scan.state)
 			break
 		}
 	}
