@@ -12,7 +12,7 @@ func (value *Status) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.Contributors = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.Contributors = &str
 		default:
 			return errors.New("Unexpected type")
@@ -24,7 +24,7 @@ func (value *Status) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.Coordinates = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.Coordinates = &str
 		default:
 			return errors.New("Unexpected type")
@@ -36,7 +36,7 @@ func (value *Status) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.CreatedAt = string(field.String())
+		value.CreatedAt = string(*field.String())
 	}
 
 	if field := input.Member("entities"); field != nil {
@@ -67,7 +67,7 @@ func (value *Status) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.Geo = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.Geo = &str
 		default:
 			return errors.New("Unexpected type")
@@ -93,7 +93,7 @@ func (value *Status) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.IDStr = string(field.String())
+		value.IDStr = string(*field.String())
 	}
 
 	if field := input.Member("in_reply_to_screen_name"); field != nil {
@@ -102,7 +102,7 @@ func (value *Status) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.InReplyToScreenName = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.InReplyToScreenName = &str
 		default:
 			return errors.New("Unexpected type")
@@ -115,7 +115,7 @@ func (value *Status) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.InReplyToStatusID = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.InReplyToStatusID = &str
 		default:
 			return errors.New("Unexpected type")
@@ -128,7 +128,7 @@ func (value *Status) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.InReplyToStatusIDStr = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.InReplyToStatusIDStr = &str
 		default:
 			return errors.New("Unexpected type")
@@ -141,7 +141,7 @@ func (value *Status) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.InReplyToUserID = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.InReplyToUserID = &str
 		default:
 			return errors.New("Unexpected type")
@@ -154,7 +154,7 @@ func (value *Status) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.InReplyToUserIDStr = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.InReplyToUserIDStr = &str
 		default:
 			return errors.New("Unexpected type")
@@ -181,7 +181,7 @@ func (value *Status) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.Place = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.Place = &str
 		default:
 			return errors.New("Unexpected type")
@@ -217,7 +217,7 @@ func (value *Status) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.Source = string(field.String())
+		value.Source = string(*field.String())
 	}
 
 	if field := input.Member("text"); field != nil {
@@ -226,7 +226,7 @@ func (value *Status) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.Text = string(field.String())
+		value.Text = string(*field.String())
 	}
 
 	if field := input.Member("truncated"); field != nil {

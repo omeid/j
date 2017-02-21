@@ -56,7 +56,7 @@ func (value *SearchMetadata) FromJSON(input j.Value) error {
 			return errors.New("Expected String for max_id_str")
 		}
 
-		value.MaxIDStr = string(field.String())
+		value.MaxIDStr = string(*field.String())
 	}
 
 	if field := input.Member("next_results"); field != nil {
@@ -65,7 +65,7 @@ func (value *SearchMetadata) FromJSON(input j.Value) error {
 			return errors.New("Expected String for next_results")
 		}
 
-		value.NextResults = string(field.String())
+		value.NextResults = string(*field.String())
 	}
 
 	if field := input.Member("query"); field != nil {
@@ -74,7 +74,7 @@ func (value *SearchMetadata) FromJSON(input j.Value) error {
 			return errors.New("Expected String for next_results")
 		}
 
-		value.Query = string(field.String())
+		value.Query = string(*field.String())
 	}
 
 	if field := input.Member("refresh_url"); field != nil {
@@ -83,7 +83,7 @@ func (value *SearchMetadata) FromJSON(input j.Value) error {
 			return errors.New("Expected String for refresh_url")
 		}
 
-		value.RefreshURL = string(field.String())
+		value.RefreshURL = string(*field.String())
 	} else {
 		panic("refresh url")
 	}
@@ -107,7 +107,7 @@ func (value *SearchMetadata) FromJSON(input j.Value) error {
 			return errors.New("Expected String for since_id_str")
 		}
 
-		value.SinceIDStr = string(field.String())
+		value.SinceIDStr = string(*field.String())
 	}
 
 	return nil

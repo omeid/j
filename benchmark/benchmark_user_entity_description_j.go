@@ -24,8 +24,7 @@ func (value *UserEntityDescription) FromJSON(input j.Value) error {
 				return errors.New("Expected Numbers for indices")
 			}
 
-			str := string(v.String())
-			strs[i] = &str
+			strs[i] = v.String()
 		}
 
 		value.Urls = strs

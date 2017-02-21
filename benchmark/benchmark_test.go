@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/omeid/j"
+	"github.com/omeid/j/benchmark"
 )
 
 var largeStructText []byte
@@ -41,14 +42,46 @@ func TestLargeStruct(t *testing.T) {
 		t.Error(err)
 		return
 	}
+}
 
-	dec, err := j.Encode(jv2)
-	if err != nil {
-		t.Error(err)
-		return
+func BenchmarLargeStruct(b *testing.B) {
+	b.SetBytes(int64(len(LargeStructText)))
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		jv, err := j.Decode(largeStructText)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+
+		if jv == nil {
+			panic("wot")
+		}
+
+		s := benchmark.LargeStruct{}
+		err = s.FromJSON(jv)
+		if err != nil {
+			b.Error(err)
+			return
+		}
 	}
+	b.SetBytes(int64(len(largeStructText)))
 
-	if !j.Match(jv, jv2) {
-		t.Errorf("Value missmatch.\nsrc: %s\n\ndec: %s\n\nphase 1: %v\n phase 2: %v\n", largeStructText, dec, jv, jv2)
+}
+
+func BenchmarValid(b *testing.B) {
+	b.SetBytes(int64(len(LargeStructText)))
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		err := j.Vecode(largeStructText)
+		if err != nil {
+			b.Error(err)
+		}
 	}
 }

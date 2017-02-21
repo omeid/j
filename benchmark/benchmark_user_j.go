@@ -25,7 +25,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type.")
 		}
 
-		value.CreatedAt = string(field.String())
+		value.CreatedAt = string(*field.String())
 	}
 
 	if field := input.Member("default_profile"); field != nil {
@@ -49,7 +49,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.Description = string(field.String())
+		value.Description = string(*field.String())
 	}
 
 	if field := input.Member("entities"); field != nil {
@@ -84,7 +84,7 @@ func (value *User) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.FollowRequestSent = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.FollowRequestSent = &str
 		default:
 			return errors.New("Unexpected type")
@@ -109,7 +109,7 @@ func (value *User) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.Following = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.Following = &str
 		default:
 			return errors.New("Unexpected type")
@@ -155,7 +155,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type.")
 		}
 
-		value.IDStr = string(field.String())
+		value.IDStr = string(*field.String())
 	}
 
 	if field := input.Member("is_translator"); field != nil {
@@ -171,7 +171,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.Lang = string(field.String())
+		value.Lang = string(*field.String())
 	}
 
 	if field := input.Member("listed_count"); field != nil {
@@ -192,7 +192,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.Location = string(field.String())
+		value.Location = string(*field.String())
 	}
 
 	if field := input.Member("name"); field != nil {
@@ -200,7 +200,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.Name = string(field.String())
+		value.Name = string(*field.String())
 	}
 
 	if field := input.Member("notifications"); field != nil {
@@ -208,7 +208,7 @@ func (value *User) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.Notifications = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.Notifications = &str
 		default:
 			return errors.New("Unexpected type")
@@ -220,7 +220,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.ProfileBackgroundColor = string(field.String())
+		value.ProfileBackgroundColor = string(*field.String())
 	}
 
 	if field := input.Member("profile_background_image_url"); field != nil {
@@ -228,7 +228,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.ProfileBackgroundImageURL = string(field.String())
+		value.ProfileBackgroundImageURL = string(*field.String())
 	}
 
 	if field := input.Member("profile_background_image_url_https"); field != nil {
@@ -236,7 +236,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.ProfileBackgroundImageURLHTTPS = string(field.String())
+		value.ProfileBackgroundImageURLHTTPS = string(*field.String())
 	}
 
 	if field := input.Member("profile_background_tile"); field != nil {
@@ -252,7 +252,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.ProfileImageURL = string(field.String())
+		value.ProfileImageURL = string(*field.String())
 	}
 
 	if field := input.Member("profile_image_url_https"); field != nil {
@@ -260,7 +260,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.ProfileImageURLHTTPS = string(field.String())
+		value.ProfileImageURLHTTPS = string(*field.String())
 	}
 
 	if field := input.Member("profile_link_color"); field != nil {
@@ -268,7 +268,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.ProfileLinkColor = string(field.String())
+		value.ProfileLinkColor = string(*field.String())
 	}
 
 	if field := input.Member("profile_sidebar_border_color"); field != nil {
@@ -276,7 +276,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.ProfileSidebarBorderColor = string(field.String())
+		value.ProfileSidebarBorderColor = string(*field.String())
 	}
 
 	if field := input.Member("profile_sidebar_fill_color"); field != nil {
@@ -284,7 +284,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.ProfileSidebarFillColor = string(field.String())
+		value.ProfileSidebarFillColor = string(*field.String())
 	}
 
 	if field := input.Member("profile_text_color"); field != nil {
@@ -292,7 +292,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.ProfileTextColor = string(field.String())
+		value.ProfileTextColor = string(*field.String())
 	}
 
 	if field := input.Member("profile_use_background_image"); field != nil {
@@ -316,7 +316,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.ScreenName = string(field.String())
+		value.ScreenName = string(*field.String())
 	}
 
 	if field := input.Member("show_all_inline_media"); field != nil {
@@ -345,7 +345,7 @@ func (value *User) FromJSON(input j.Value) error {
 			return errors.New("Unexpected type")
 		}
 
-		value.TimeZone = string(field.String())
+		value.TimeZone = string(*field.String())
 	}
 
 	if field := input.Member("url"); field != nil {
@@ -353,7 +353,7 @@ func (value *User) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.URL = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.URL = &str
 		default:
 			return errors.New("Unexpected type")

@@ -136,7 +136,7 @@ func writeMember(out writer, m Member) error {
 	if err != nil {
 		return err
 	}
-	_, err = out.Write([]byte(m.Name()))
+	_, err = out.Write([]byte(*m.Name()))
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func writeString(out writer, v Value) error {
 		return err
 	}
 
-	sb := strings.Encode(string(v.String()))
+	sb := strings.Encode(string(*v.String()))
 	_, err = out.Write(sb)
 	if err != nil {
 		return err

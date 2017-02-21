@@ -17,7 +17,7 @@ func (value *Hashtag) FromJSON(input j.Value) error {
 			return errors.New("Expected String for text")
 		}
 
-		value.Text = string(field.String())
+		value.Text = string(*field.String())
 	}
 
 	if field := input.Member("indices"); field != nil {

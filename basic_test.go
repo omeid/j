@@ -24,35 +24,35 @@ func TestNewNull(t *testing.T) {
 	n := NewNull()
 
 	checkType(t, n, NullType)
-	CheckPanics(t, n)
+	checkPanics(t, n)
 }
 
 func TestNewString(t *testing.T) {
 	n := NewString("")
 
 	checkType(t, n, StringType)
-	CheckPanics(t, n)
+	checkPanics(t, n)
 }
 
 func TestNewBool(t *testing.T) {
 	n := NewBool(false)
 
 	checkType(t, n, BoolType)
-	CheckPanics(t, n)
+	checkPanics(t, n)
 }
 
 func TestNewArray(t *testing.T) {
 	n := NewArray(nil)
 
 	checkType(t, n, ArrayType)
-	CheckPanics(t, n)
+	checkPanics(t, n)
 }
 
 func TestNewObject(t *testing.T) {
 	n := NewObject(nil)
 
 	checkType(t, n, ObjectType)
-	CheckPanics(t, n)
+	checkPanics(t, n)
 }
 
 func TestNewMember(t *testing.T) {

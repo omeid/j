@@ -10,7 +10,7 @@ import (
 
 // Encode the provide string as json string.
 func Encode(s string) []byte {
-	out := new(bytes.Buffer)
+	var out bytes.Buffer
 
 	start := 0
 	for i := 0; i < len(s); {

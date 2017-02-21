@@ -46,14 +46,14 @@ type Value interface {
 // The String type is simply a string.
 // It merely exists to keep the fmt package
 // from calling it and resulting in panics.
-type String string
+type String *string
 
 // Member is a JSON object Member.
 type Member interface {
 	// Tag is the struct member tag.
 	Tag() string
 
-	Name() string
+	Name() *string
 	Value() Value
 }
 

@@ -17,7 +17,7 @@ func (value *StatusMetadata) FromJSON(input j.Value) error {
 			return errors.New("Expected String for max_id_str")
 		}
 
-		value.IsoLanguageCode = string(field.String())
+		value.IsoLanguageCode = string(*field.String())
 	}
 
 	if field := input.Member("result_type"); field != nil {
@@ -26,7 +26,7 @@ func (value *StatusMetadata) FromJSON(input j.Value) error {
 			return errors.New("Expected String for next_results")
 		}
 
-		value.ResultType = string(field.String())
+		value.ResultType = string(*field.String())
 	}
 
 	return nil

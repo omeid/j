@@ -2,11 +2,7 @@ package j
 
 // NewObject creates a new mutable object
 func NewObject(members []Member) Value {
-	index := make(map[string]int, len(members))
-	for i, m := range members {
-		index[m.Name()] = i
-	}
-	return &object{value: baseValue, members: members, index: index}
+	return &object{value: baseValue, members: members}
 }
 
 type object struct {
@@ -25,10 +21,10 @@ func (o *object) Members() []Member {
 }
 
 func (o *object) Member(name string) Value {
-	i, ok := o.index[name]
-	if !ok {
-		return nil
+	for i, m := range o.members {
+		if *m.Name() == name {
+			return o.members[i].Value()
+		}
 	}
-
-	return o.members[i].Value()
+	return nil
 }

@@ -15,8 +15,8 @@ func (m *member) Tag() string {
 	return m.tag
 }
 
-func (m *member) Name() string {
-	return m.name
+func (m *member) Name() *string {
+	return &m.name
 }
 
 func (m *member) Value() Value {

@@ -4,9 +4,9 @@ import (
 	"testing"
 )
 
-// CheckPanics makes sure the Value actually
+// checkPanics makes sure the Value actually
 // does panics when incorrect methods are called on.
-func CheckPanics(t *testing.T, v Value) {
+func checkPanics(t *testing.T, v Value) {
 
 	typ := v.Type()
 

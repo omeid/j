@@ -15,5 +15,5 @@ func (s sstring) Type() Type {
 }
 
 func (s *sstring) String() String {
-	return String(s.text)
+	return String(&s.text)
 }

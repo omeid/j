@@ -21,7 +21,7 @@ func (value *URL) FromJSON(input j.Value) error {
 		case j.NullType:
 			value.ExpandedURL = nil
 		case j.StringType:
-			str := string(field.String())
+			str := string(*field.String())
 			value.ExpandedURL = &str
 		default:
 			return errors.New("Unexpected type")
@@ -59,7 +59,7 @@ func (value *URL) FromJSON(input j.Value) error {
 			return errors.New("Expected String for text")
 		}
 
-		value.URL = string(field.String())
+		value.URL = string(*field.String())
 	}
 
 	return nil

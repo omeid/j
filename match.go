@@ -2,7 +2,6 @@ package j
 
 import (
 	"bytes"
-	"fmt"
 	"sort"
 )
 
@@ -28,7 +27,7 @@ func Match(a Value, b Value) bool {
 	case NumberType:
 		return matchNumber(a, b)
 	case StringType:
-		return a.String() == b.String()
+		return *a.String() == *b.String()
 	case NullType:
 		return true // Null types are always the same.
 	default:
@@ -41,7 +40,7 @@ type sortableByNameMembers []Member
 
 func (sm sortableByNameMembers) Len() int           { return len(sm) }
 func (sm sortableByNameMembers) Swap(i, j int)      { sm[i], sm[j] = sm[j], sm[i] }
-func (sm sortableByNameMembers) Less(i, j int) bool { return sm[i].Name() < sm[j].Name() }
+func (sm sortableByNameMembers) Less(i, j int) bool { return *sm[i].Name() < *sm[j].Name() }
 
 func matchObject(a Value, b Value) bool {
 	ams := a.Members()
@@ -55,8 +54,6 @@ func matchObject(a Value, b Value) bool {
 
 	for i, v := range ams {
 		if !matchMember(v, bms[i]) {
-			fmt.Printf("::: a: %v %v, b:%v %v\n", v.Name(), v.Value().Type(), bms[i].Name(), bms[i].Value().Type())
-			fmt.Printf("::: Miss match %v %v\n", v.Name(), bms[i].Name())
 			return false
 		}
 	}
@@ -90,7 +87,7 @@ func matchNumber(a Value, b Value) bool {
 }
 
 func matchMember(a Member, b Member) bool {
-	if a.Name() != b.Name() {
+	if *a.Name() != *b.Name() {
 		return false
 	}
 

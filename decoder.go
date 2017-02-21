@@ -21,7 +21,7 @@ func (pe ParseError) Error() string {
 }
 
 type decoder struct {
-	scan *Scanner
+	scan *scanner
 	read *reader
 
 	b   byte
@@ -35,13 +35,15 @@ func (d *decoder) step() {
 	}
 
 	d.scan.Step(d.b)
-	d.err = d.scan.Error()
+	if d.scan.err != nil {
+		d.err = d.scan.err
+	}
 }
 
 // Decode loads your input int a Value object.
 func Decode(input []byte) (Value, error) {
 
-	var scan Scanner
+	var scan scanner
 	// fmt.Printf("\n\nvalid:\n")
 	err := valid(input, &scan)
 	if err != nil {
@@ -113,7 +115,7 @@ func nextValue(d *decoder) Value {
 		return nextTrue(d)
 
 	default:
-		ss := fmt.Sprintf("Whop the dup. No handler for state %s %s", d.scan.state, d.scan.pos.string())
+		ss := fmt.Sprintf("Whop the dup. No handler for state %s %v", d.scan.state, d.scan.pos)
 
 		panic(ss)
 	}
@@ -239,8 +241,7 @@ func nextkv(d *decoder) Member {
 		return nil
 	}
 
-	//TODO: escape the key!
-	m := NewMember("", string(key), value)
+	m := NewMember("", strings.Decode((key)), value)
 
 	// fmt.Printf("returning a member\n")
 	return m
@@ -254,6 +255,7 @@ func nextArray(d *decoder) Value {
 
 	sd := len(d.scan.stack)
 
+	// walk past the start of array.
 	for {
 		d.step()
 		if d.err != nil {
@@ -296,25 +298,17 @@ func nextArray(d *decoder) Value {
 			break
 		}
 
-		if d.scan.state == stateEndArray && len(d.scan.stack) == sd {
-			d.step()
-			if d.err != nil && d.err != io.EOF {
-				return nil
-			}
-			break
-		}
 	}
 	return NewArray(values)
 }
 
 func nextString(d *decoder) Value {
 
-	//scanner is in d.scan.stateBeginArray
 	if d.scan.state != stateBeginString {
 		panic("called nextString while not in stateBeginString")
 	}
 
-	var s []byte
+	s := make([]byte, 0, 20)
 	d.step() // step over "
 	if d.err != nil {
 		return nil
@@ -365,12 +359,11 @@ func nextString(d *decoder) Value {
 
 func nextNumber(d *decoder) Value {
 
-	//scanner is in d.scan.stateBeginArray
 	if d.scan.state != stateBeginNumber {
 		panic("called nextNumber while not in stateBeginNumber")
 	}
 
-	var s []byte
+	s := make([]byte, 0, 20)
 	// the value for stateBeginNumber is part of the number value.
 	d.b = d.scan.last
 
