@@ -11,7 +11,7 @@ Please note that the project is in it's infancy stage and being rapidly develope
 
 ### Why?
 
-
+![Tumbleweed](https://media.giphy.com/media/Az1CJ2MEjmsp2/giphy.gif)
 
 ### Credits
 
